@@ -159,6 +159,7 @@ module.exports = maptalks.renderer.Canvas.extend({
             this._buffers.forEach(function (b) {
                 gl.deleteBuffer(b);
             });
+            delete this._buffers;
         }
     },
 
@@ -233,12 +234,7 @@ module.exports = maptalks.renderer.Canvas.extend({
 
     enableSampler: function (sampler, texIdx) {
         var gl = this.context;
-        // Get the storage location of u_Sampler
-        var u_Sampler = gl.getUniformLocation(gl.program, sampler);
-        if (!u_Sampler) {
-            console.error('Failed to get the storage location of ' + sampler);
-            return false;
-        }
+        var u_Sampler = this.getUniform(sampler);
         if (!texIdx) {
             texIdx = 0;
         }
@@ -247,15 +243,31 @@ module.exports = maptalks.renderer.Canvas.extend({
         return u_Sampler;
     },
 
+    getUniform: function (uniform) {
+        var gl = this.context;
+        // Get the storage location of u_Sampler
+        var uniform = gl.getUniformLocation(gl.program, uniform);
+        if (!uniform) {
+            console.error('Failed to get the storage location of ' + uniform);
+            return false;
+        }
+        return uniform;
+    },
+
     calcMatrices: function () {
-        var maxZ = map.getMaxZoom();
-        var maxRes = this.getMap().getResolution(maxZ),
-            res = this.getMap().getResolution(),
-            scale = res / maxRes;
+        var map = this.getMap(),
+            maxZ = map.getMaxZoom();
+        var size = map.getSize(),
+            scale = map.getScale();
         var center = map._prjToPoint(map._getPrjCenter(), maxZ);
-        var m = this.uMatrix = new Float32Array();
+        var m = mat4.create();
         mat4.translate(m, m, [-center.x, -center.y, 0]);
-        mat4.scale(m, m, [scale, scale, 1]);
+        var ms = mat4.create();
+        mat4.scale(ms, ms, [1 / (scale * size.width / 2), 1 / (scale * -size.height / 2), 1]);
+
+        mat4.mul(m, ms, m);
+
+        return m;
     },
 
     _createGLContext: function(canvas, options) {

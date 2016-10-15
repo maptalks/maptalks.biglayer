@@ -1,8 +1,10 @@
 'use strict';
 
 var maptalks = require('maptalks'),
+    glMatrix = require('gl-matrix'),
     BigDataLayer = require('./BigDataLayer');
 
+var vec2 = glMatrix.vec2;
 
 var BigPointLayer = module.exports = BigDataLayer.extend({});
 
@@ -77,7 +79,10 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         this.prepareCanvas();
         this._checkSprites();
         var map = this.getMap(),
+            maxZ = map.getMaxZoom(),
+            scale = map.getScale(),
             prjExtent = map.getProjExtent(),
+            extent2d = map._get2DExtent(maxZ),
             extent = map.getContainerExtent(),
             w = extent.getWidth() / 2,
             h = extent.getHeight() / 2;
@@ -87,25 +92,26 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         if (!this._projCoords) {
             this._projCoords = [];
             this._textCoords = [];
-            var projection = map.getProjection();
+            // var projection = map.getProjection();
             for (var i = 0, l = data.length; i < l; i++) {
                 var textCoord = this._getTextCoord({'properties' : data[i][2]});
                 if (textCoord) {
-                    this._projCoords.push(projection.project(new maptalks.Coordinate(data[i])));
+                    this._projCoords.push(map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ));
                     this._textCoords.push(textCoord);
                 }
             }
         }
 
+        var tex;
         for (var i = 0, l = this._projCoords.length; i < l; i++) {
-            if (prjExtent.contains(this._projCoords[i])) {
-                var tex = this._textCoords[i];
-                cp = map._prjToContainerPoint(this._projCoords[i]);
+            if (extent2d.contains(this._projCoords[i])) {
+                tex = this._textCoords[i];
+                cp = this._projCoords[i];
                 if (tex.offset) {
-                    cp._add(tex.offset);
+                    cp = cp.add(tex.offset.div(scale));
                 }
                 //0: x, 1: y, 2: northwest.x, 3: northwest.y, 4: width, 5: height
-                Array.prototype.push.apply(verticesTexCoords, [(cp.x - w) / w,  (h - cp.y) / h].concat(tex.textCoord));
+                Array.prototype.push.apply(verticesTexCoords, [cp.x, cp.y].concat(tex.textCoord));
             }
         }
 
@@ -164,10 +170,22 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
             this.enableSampler('u_Sampler');
             this._textureLoaded = true;
         }
+
+        var gl = this.context;
+        var m = this.calcMatrices();
+        gl.uniformMatrix4fv(this.getUniform('u_Matrix'), false, m);
+/*
+        var map = this.getMap();
+        var center = map._prjToPoint(map._getPrjCenter().add(100000, 1000), map.getMaxZoom());
+        console.log(center);
+        var v2 = vec2.fromValues(center.x, center.y);
+        var ret = vec2.fromValues(0, 0);
+        vec2.transformMat4(ret, v2, m);
+        console.log(ret);
+*/
         var stride = 7;
         var page = stride * 10000,
             l = verticesTexCoords.length / page;
-        var gl = this.context;
 
         if (verticesTexCoords.length % page !== 0) {
             l -= 1;
