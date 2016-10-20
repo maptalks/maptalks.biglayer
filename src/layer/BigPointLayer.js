@@ -12,21 +12,23 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
     vertexShader : 'attribute vec4 a_Position;\n' +
         'attribute float a_Size;\n' +
-        'attribute vec4 a_TexCoord;\n' +
+        'attribute vec3 a_TexCoord;\n' +
+        'attribute vec4 a_TexOffset;\n' +
         'uniform mat4 u_Matrix;\n' +
-        'varying vec4 v_TexCoord;\n' +
+        'uniform float u_Scale;\n' +
+        'varying vec3 v_TexCoord;\n' +
         'void main() {\n' +
-        '  gl_Position = u_Matrix * a_Position;\n' +
+        '  vec4 pos = vec4(a_Position.x + a_TexOffset.x * u_Scale, a_Position.y + a_TexOffset.y * u_Scale, a_Position.z, a_Position.w);\n' +
+        '  gl_Position = u_Matrix * pos;\n' +
         '  gl_PointSize = a_Size;\n' +
         '  v_TexCoord = a_TexCoord;\n' +
         '}\n',
 
     fragmentShader : 'precision mediump float;\n' +
         'uniform sampler2D u_Sampler;\n' +
-        'varying vec4 v_TexCoord;\n' +
+        'varying vec3 v_TexCoord;\n' +
         'void main() {\n' +
-        '  vec2 v_Coord = vec2(v_TexCoord[0] + gl_PointCoord[0] * v_TexCoord[2], v_TexCoord[1] + gl_PointCoord[1] * v_TexCoord[3]);\n' +
-        '  gl_FragColor = texture2D(u_Sampler, v_Coord);\n' +
+        '  gl_FragColor = texture2D(u_Sampler, vec2(v_TexCoord[0] + gl_PointCoord[0] * v_TexCoord[1], 1.0 + gl_PointCoord[1] * v_TexCoord[2]));\n' +
         '}\n',
 
     initialize: function (layer) {
@@ -64,13 +66,16 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
     },
 
     onCanvasCreate: function () {
+        var gl = this.context;
         var program = this.createProgram(this.vertexShader, this.fragmentShader);
         this.useProgram(program);
         var buffer = this.createBuffer();
-        this.enableVertexAttribOn(buffer, [
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        this.enableVertexAttrib([
             ['a_Position', 2],
-            ['a_TexCoord', 4],
-            ['a_Size', 1]
+            ['a_TexCoord', 3],
+            ['a_Size', 1],
+            ['a_TexOffset', 2]
         ]);
     },
 
@@ -78,44 +83,27 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         console.time('draw points');
         this.prepareCanvas();
         this._checkSprites();
-        var map = this.getMap(),
-            maxZ = map.getMaxZoom(),
-            scale = map.getScale(),
-            prjExtent = map.getProjExtent(),
-            extent2d = map._get2DExtent(maxZ),
-            extent = map.getContainerExtent(),
-            w = extent.getWidth() / 2,
-            h = extent.getHeight() / 2;
-        var data = this.layer.data,
-            verticesTexCoords = [],
-            cp, sprite;
-        if (!this._projCoords) {
-            this._projCoords = [];
-            this._textCoords = [];
-            // var projection = map.getProjection();
+
+        if (!this._vertexCount) {
+            var map = this.getMap(),
+                maxZ = map.getMaxZoom();
+            var data = this.layer.data;
+            var vertexTexCoords = [];
+            var cp, tex;
+            this._vertexCount = 0;
+            var gl = this.context;
             for (var i = 0, l = data.length; i < l; i++) {
-                var textCoord = this._getTextCoord({'properties' : data[i][2]});
-                if (textCoord) {
-                    this._projCoords.push(map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ));
-                    this._textCoords.push(textCoord);
+                tex = this._getTextCoord({'properties' : data[i][2]});
+                if (tex) {
+                    this._vertexCount++;
+                    cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ);
+                    vertexTexCoords.push(cp.x, cp.y, tex.textCoord[0], tex.textCoord[1], tex.textCoord[2], tex.textCoord[3], tex.offset.x, tex.offset.y);
                 }
             }
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexTexCoords), gl.STATIC_DRAW);
         }
 
-        var tex;
-        for (var i = 0, l = this._projCoords.length; i < l; i++) {
-            if (extent2d.contains(this._projCoords[i])) {
-                tex = this._textCoords[i];
-                cp = this._projCoords[i];
-                if (tex.offset) {
-                    cp = cp.add(tex.offset.div(scale));
-                }
-                //0: x, 1: y, 2: northwest.x, 3: northwest.y, 4: width, 5: height
-                Array.prototype.push.apply(verticesTexCoords, [cp.x, cp.y].concat(tex.textCoord));
-            }
-        }
-
-        this._drawMarkers(verticesTexCoords);
+        this._drawMarkers();
         console.timeEnd('draw points');
         this.completeRender();
     },
@@ -149,8 +137,7 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
                 var sprite = new maptalks.Marker([0, 0], {
                     'symbol' : s['symbol']
                 })
-                ._getPainter()
-                .getSprite(resources);
+                ._getSprite(resources);
                 sprites.push(sprite);
             });
         }
@@ -162,18 +149,26 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         }
 
         this._needCheckSprites = false;
-    },
 
-    _drawMarkers: function (verticesTexCoords) {
         if (!this._textureLoaded) {
             this.loadTexture(this._sprites.canvas);
             this.enableSampler('u_Sampler');
             this._textureLoaded = true;
         }
+    },
+
+    _drawMarkers: function () {
+        var gl = this.context;
+
+        if (!this.posMatrix) {
+            this.posMatrix = this.getUniform('u_Matrix');
+            this.uScale = this.getUniform('u_Scale');
+        }
 
         var gl = this.context;
         var m = this.calcMatrices();
-        gl.uniformMatrix4fv(this.getUniform('u_Matrix'), false, m);
+        gl.uniformMatrix4fv(this.posMatrix, false, m);
+        gl.uniform1f(this.uScale, this.getMap().getScale());
 /*
         var map = this.getMap();
         var center = map._prjToPoint(map._getPrjCenter().add(100000, 1000), map.getMaxZoom());
@@ -183,24 +178,8 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         vec2.transformMat4(ret, v2, m);
         console.log(ret);
 */
-        var stride = 7;
-        var page = stride * 10000,
-            l = verticesTexCoords.length / page;
-
-        if (verticesTexCoords.length % page !== 0) {
-            l -= 1;
-        }
-        var part;
-        for (var i = 0; i < l; i++) {
-            part = verticesTexCoords.slice(i * page, (i + 1) * page);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(part), gl.DYNAMIC_DRAW);
-            gl.drawArrays(gl.POINTS, 0, part.length / stride);
-        }
-        if (verticesTexCoords.length % page !== 0) {
-            part = verticesTexCoords.slice(i * page, verticesTexCoords.length);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(part), gl.DYNAMIC_DRAW);
-            gl.drawArrays(gl.POINTS, 0, part.length / stride);
-        }
+        var stride = 8;
+        gl.drawArrays(gl.POINTS, 0, this._vertexCount);
     },
 
     _registerEvents: function () {

@@ -99,7 +99,7 @@ module.exports = maptalks.renderer.Canvas.extend({
                 dy = len > ch ? (len - ch) / 2 : 0;
             ctx.drawImage(s.canvas, pointer + dx, dy);
             //0: northwest.x, 1: northwest.y, 2: width, 3: height, 4: size
-            textCoords.push([pointer / w, 1, len / w, len / h, len]);
+            textCoords.push([pointer / w, len / w, len / h, len]);
             offsets.push(s.offset);
             pointer += len + buffer;
         });
@@ -127,10 +127,8 @@ module.exports = maptalks.renderer.Canvas.extend({
         return buffer;
     },
 
-    enableVertexAttribOn: function (buffer, attributes) {
+    enableVertexAttrib: function (attributes) {
         var gl = this.context;
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-
         var verticesTexCoords = new Float32Array([0.0, 0.0, 0.0]);
 
         var FSIZE = verticesTexCoords.BYTES_PER_ELEMENT;
@@ -275,7 +273,7 @@ module.exports = maptalks.renderer.Canvas.extend({
         var context = null;
         for (var i = 0; i < names.length; ++i) {
         try {
-          context = canvas.getContext(names[i], maptalks.Util.extend({'antialias' : true}, options));
+          context = canvas.getContext(names[i], maptalks.Util.extend({'alpha' : true, 'antialias' : true, 'preserveDrawingBuffer' : true}, options));
         } catch(e) {}
         if (context) {
           break;
