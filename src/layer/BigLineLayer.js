@@ -1,8 +1,11 @@
 'use strict';
 
 var maptalks = require('maptalks'),
-    BigDataLayer = require('./BigDataLayer'),
-    shaders = require('mapbox-gl-shaders');
+    glMatrix = require('gl-matrix'),
+    shaders = require('mapbox-gl-shaders'),
+    BigDataLayer = require('./BigDataLayer');
+
+var vec2 = glMatrix.vec2;
 
 var BigLineLayer = module.exports = BigDataLayer.extend({});
 
@@ -43,57 +46,60 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
     },
 
     onCanvasCreate: function () {
+        var gl = this.context;
         var program = this.createProgram(this.vertexShader, this.fragmentShader);
         this.useProgram(program);
         var buffer = this.createBuffer();
-        this.enableVertexAttribOn(buffer, [
-
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        this.enableVertexAttribOn([
+            ['a_Position', 2],
+            ['a_TexCoord', 4],
+            ['a_Size', 1]
         ]);
     },
 
     draw: function () {
         console.time('draw lines');
         this.prepareCanvas();
-        // this._checkSprites();
+        this._checkSprites();
         var map = this.getMap(),
+            maxZ = map.getMaxZoom(),
+            scale = map.getScale(),
             prjExtent = map.getProjExtent(),
+            extent2d = map._get2DExtent(maxZ),
             extent = map.getContainerExtent(),
             w = extent.getWidth() / 2,
             h = extent.getHeight() / 2;
         var data = this.layer.data,
             verticesTexCoords = [],
-            cp;
+            cp, sprite;
         if (!this._projCoords) {
-            var projection = map.getProjection();
+            this._projCoords = [];
+            this._textCoords = [];
+            // var projection = map.getProjection();
             for (var i = 0, l = data.length; i < l; i++) {
-                if (Array.isArray(data[i][0][0][0])) {
-                    //MultiLineString
-
-                } else {
-                    //LineString
+                var textCoord = this._getTextCoord({'properties' : data[i][2]});
+                if (textCoord) {
+                    this._projCoords.push(map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ));
+                    this._textCoords.push(textCoord);
                 }
-            }
-            this._projCoords = data.map(function () {
-
-            });
-            for (var i = 0, l = data.length; i < l; i++) {
-                this._projCoords.push(projection.project(new maptalks.Coordinate(data[i])));
             }
         }
 
+        var tex;
         for (var i = 0, l = this._projCoords.length; i < l; i++) {
-            if (prjExtent.contains(this._projCoords[i])) {
-                var tex = this._textCoords[i];
-                cp = map._prjToContainerPoint(this._projCoords[i]);
+            if (extent2d.contains(this._projCoords[i])) {
+                tex = this._textCoords[i];
+                cp = this._projCoords[i];
                 if (tex.offset) {
-                    cp._add(tex.offset);
+                    cp = cp.add(tex.offset.div(scale));
                 }
                 //0: x, 1: y, 2: northwest.x, 3: northwest.y, 4: width, 5: height
-                Array.prototype.push.apply(verticesTexCoords, [(cp.x - w) / w,  (h - cp.y) / h].concat(tex.textCoord));
+                Array.prototype.push.apply(verticesTexCoords, [cp.x, cp.y].concat(tex.textCoord));
             }
         }
 
-        this._drawMarkers(verticesTexCoords);
+        this._drawLines(verticesTexCoords);
         console.timeEnd('draw lines');
         this.completeRender();
     },
@@ -127,8 +133,7 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
                 var sprite = new maptalks.Marker([0, 0], {
                     'symbol' : s['symbol']
                 })
-                ._getPainter()
-                .getSprite(resources);
+                ._getSprite(resources);
                 sprites.push(sprite);
             });
         }
@@ -142,31 +147,8 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         this._needCheckSprites = false;
     },
 
-    _drawMarkers: function (verticesTexCoords) {
-        if (!this._textureLoaded) {
-            this.loadTexture(this._sprites.canvas);
-            this.enableSampler('u_Sampler');
-            this._textureLoaded = true;
-        }
-        var stride = 7;
-        var page = stride * 10000,
-            l = verticesTexCoords.length / page;
-        var gl = this.context;
+    _drawLines: function () {
 
-        if (verticesTexCoords.length % page !== 0) {
-            l -= 1;
-        }
-        var part;
-        for (var i = 0; i < l; i++) {
-            part = verticesTexCoords.slice(i * page, (i + 1) * page);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(part), gl.DYNAMIC_DRAW);
-            gl.drawArrays(gl.POINTS, 0, part.length / stride);
-        }
-        if (verticesTexCoords.length % page !== 0) {
-            part = verticesTexCoords.slice(i * page, verticesTexCoords.length);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(part), gl.DYNAMIC_DRAW);
-            gl.drawArrays(gl.POINTS, 0, part.length / stride);
-        }
     },
 
     _registerEvents: function () {

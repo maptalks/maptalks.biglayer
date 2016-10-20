@@ -47,8 +47,10 @@
     "sinon": "^1.14.1"
   },
   "dependencies": {
+    "brfs": "^1.4.3",
     "gl-matrix": "^2.3.2",
-    "mapbox-gl-shaders": "https://github.com/mapbox/mapbox-gl-shaders.git"
+    "mapbox-gl-shaders": "https://github.com/mapbox/mapbox-gl-shaders.git",
+    "point-geometry": "^0.1.0"
   },
   "peerDependencies": {
     "maptalks": "<2.0.0"
