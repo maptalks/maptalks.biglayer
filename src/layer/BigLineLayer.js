@@ -2,10 +2,12 @@
 
 var maptalks = require('maptalks'),
     glMatrix = require('gl-matrix'),
-    shaders = require('mapbox-gl-shaders'),
+    shaders = require('../shader/Shader'),
+    LinePainter = require('../painter/LinePainter'),
     BigDataLayer = require('./BigDataLayer');
 
-var vec2 = glMatrix.vec2;
+var vec2 = glMatrix.vec2,
+    mat2 = glMatrix.mat2;
 
 var BigLineLayer = module.exports = BigDataLayer.extend({});
 
@@ -18,7 +20,7 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         this._registerEvents();
     },
 
-    checkResources:function (geometries) {
+    checkResources:function () {
         if (!this._needCheckStyle) {
             return null;
         }
@@ -47,59 +49,54 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
     onCanvasCreate: function () {
         var gl = this.context;
-        var program = this.createProgram(this.vertexShader, this.fragmentShader);
+        var uniforms = ['u_matrix', 'u_linewidth', 'u_color', 'u_opacity', 'u_blur'];
+        var program = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
         this.useProgram(program);
-        var buffer = this.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        this.enableVertexAttribOn([
-            ['a_Position', 2],
-            ['a_TexCoord', 4],
-            ['a_Size', 1]
-        ]);
     },
 
     draw: function () {
         console.time('draw lines');
         this.prepareCanvas();
         this._checkSprites();
-        var map = this.getMap(),
+        var gl = this.context,
+            map = this.getMap(),
             maxZ = map.getMaxZoom(),
-            scale = map.getScale(),
-            prjExtent = map.getProjExtent(),
-            extent2d = map._get2DExtent(maxZ),
-            extent = map.getContainerExtent(),
-            w = extent.getWidth() / 2,
-            h = extent.getHeight() / 2;
+            scale = map.getScale();
         var data = this.layer.data,
-            verticesTexCoords = [],
             cp, sprite;
-        if (!this._projCoords) {
-            this._projCoords = [];
-            this._textCoords = [];
-            // var projection = map.getProjection();
+        if (!this._lineArrays) {
+            var painter = new LinePainter(gl, map);
             for (var i = 0, l = data.length; i < l; i++) {
-                var textCoord = this._getTextCoord({'properties' : data[i][2]});
-                if (textCoord) {
-                    this._projCoords.push(map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ));
-                    this._textCoords.push(textCoord);
-                }
+                painter.addLine(data[i]);
             }
+            var lineArrays = painter.getArrays();
+
+            var vertexBuffer = this.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            this.enableVertexAttrib(
+                ['a_pos', 2, 'FLOAT']
+            );
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.vertexArray), gl.STATIC_DRAW);
+
+            var normalBuffer = this.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+            this.enableVertexAttrib(
+                ['a_normal', 3, 'FLOAT']
+            );
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.normalArray), gl.STATIC_DRAW);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+            var elementBuffer = this.createBuffer();
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(lineArrays.elementArray), gl.STATIC_DRAW);
+
+            console.log(lineArrays);
+
+            this._elementCount = lineArrays.elementArray.length;
         }
 
-        var tex;
-        for (var i = 0, l = this._projCoords.length; i < l; i++) {
-            if (extent2d.contains(this._projCoords[i])) {
-                tex = this._textCoords[i];
-                cp = this._projCoords[i];
-                if (tex.offset) {
-                    cp = cp.add(tex.offset.div(scale));
-                }
-                //0: x, 1: y, 2: northwest.x, 3: northwest.y, 4: width, 5: height
-                Array.prototype.push.apply(verticesTexCoords, [cp.x, cp.y].concat(tex.textCoord));
-            }
-        }
-
-        this._drawLines(verticesTexCoords);
+        this._drawLines();
         console.timeEnd('draw lines');
         this.completeRender();
     },
@@ -107,19 +104,8 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
     onRemove: function () {
         this._removeEvents();
         delete this._sprites;
+        delete this._lineArrays;
         maptalks.renderer.WebGL.prototype.onRemove.apply(this, arguments);
-    },
-
-    _getTextCoord: function (props) {
-        for (var i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
-            if (this.layer._cookedStyles[i].filter(props) === true) {
-                return {
-                    'textCoord' : this._sprites.textCoords[i],
-                    'offset'   : this._sprites.offsets[i]
-                };
-            }
-        }
-        return null;
     },
 
     _checkSprites: function () {
@@ -130,11 +116,7 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         var sprites = [];
         if (this.layer.getStyle()) {
             this.layer.getStyle().forEach(function (s) {
-                var sprite = new maptalks.Marker([0, 0], {
-                    'symbol' : s['symbol']
-                })
-                ._getSprite(resources);
-                sprites.push(sprite);
+
             });
         }
 
@@ -148,7 +130,21 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
     },
 
     _drawLines: function () {
+        var gl = this.context,
+            program = gl.program;
+        var symbol = {
+            'lineWidth' : 6,
+            'lineOpacity' : 0.6,
+            'lineColor' : [255, 255, 255, 1]
+        };
+        var m = this.calcMatrices();
+        gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
+        gl.uniform1f(program.u_linewidth, symbol['lineWidth'] / 2 / this.canvas.width);
+        gl.uniform4fv(program.u_color, new Float32Array(symbol['lineColor']));
+        gl.uniform1f(program.u_opacity, symbol['lineOpacity']);
+        gl.uniform1f(program.u_blur, 0.5);
 
+        gl.drawElements(gl.TRIANGLES, this._elementCount, gl.UNSIGNED_SHORT, 0);
     },
 
     _registerEvents: function () {

@@ -10,7 +10,7 @@ var BigPointLayer = module.exports = BigDataLayer.extend({});
 
 BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
-    vertexShader : 'attribute vec4 a_Position;\n' +
+    vertexSource : 'attribute vec4 a_Position;\n' +
         'attribute float a_Size;\n' +
         'attribute vec3 a_TexCoord;\n' +
         'attribute vec4 a_TexOffset;\n' +
@@ -24,7 +24,7 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         '  v_TexCoord = a_TexCoord;\n' +
         '}\n',
 
-    fragmentShader : 'precision mediump float;\n' +
+    fragmentSource : 'precision mediump float;\n' +
         'uniform sampler2D u_Sampler;\n' +
         'varying vec3 v_TexCoord;\n' +
         'void main() {\n' +
@@ -67,7 +67,8 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
     onCanvasCreate: function () {
         var gl = this.context;
-        var program = this.createProgram(this.vertexShader, this.fragmentShader);
+        var uniforms = ['u_Matrix', 'u_Scale'];
+        var program = this.createProgram(this.vertexSource, this.fragmentSource, uniforms);
         this.useProgram(program);
         var buffer = this.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -138,7 +139,9 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
                     'symbol' : s['symbol']
                 })
                 ._getSprite(resources);
-                sprites.push(sprite);
+                if (sprite) {
+                    sprites.push(sprite);
+                }
             });
         }
 
@@ -159,16 +162,9 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
     _drawMarkers: function () {
         var gl = this.context;
-
-        if (!this.posMatrix) {
-            this.posMatrix = this.getUniform('u_Matrix');
-            this.uScale = this.getUniform('u_Scale');
-        }
-
-        var gl = this.context;
         var m = this.calcMatrices();
-        gl.uniformMatrix4fv(this.posMatrix, false, m);
-        gl.uniform1f(this.uScale, this.getMap().getScale());
+        gl.uniformMatrix4fv(gl.program.u_Matrix, false, m);
+        gl.uniform1f(gl.program.u_Scale, this.getMap().getScale());
 /*
         var map = this.getMap();
         var center = map._prjToPoint(map._getPrjCenter().add(100000, 1000), map.getMaxZoom());

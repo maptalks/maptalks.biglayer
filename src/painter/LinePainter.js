@@ -13,19 +13,33 @@ var maptalks = require('maptalks'),
  * @author fuzhenn
  * @class
  */
-var LinePainter = Painter.extend({
+var LinePainter = module.exports = Painter.extend({
     options: {
         'lineJoin' : 'miter', // “bevel”, “round”, “miter”
-        'lineCap' : 'butt'//“butt”, “square”, “round”
+        'lineCap' : 'butt',//“butt”, “square”, “round”
+        'project' : true
     },
 
     initialize: function (gl, map, options) {
         this.gl = gl;
         this.map = map;
+
+        // output arrays
         this.vertexArray = [];
+        this.normalArray = [];
         this.elementArray = [];
+
         maptalks.Util.setOptions(this, options);
-    }
+    },
+
+
+    getArrays: function () {
+        return {
+            'vertexArray'  : this.vertexArray,
+            'normalArray'  : this.normalArray,
+            'elementArray' : this.elementArray
+        };
+    },
 
     addLine: function (line) {
         var vertice = this._getVertice(line);
@@ -43,11 +57,16 @@ var LinePainter = Painter.extend({
         // element pos
         this.e1 = this.e2 = this.e3 = -1;
 
+        var maxZ = this.map.getMaxZoom();
+
         var currentVertex;
         for (var i = 0, l = vertice.length; i < l; i++) {
-            currentVertex = new Point(vertice[i][0], vertice[i][1]);
+            var vertex = vertice[i];
+            if (this.options['project']) {
+                vertex = this.map.coordinateToPoint(new maptalks.Coordinate(vertex), maxZ).toArray();
+            }
+            currentVertex = new Point(vertex[0], vertex[1]);
             this.addCurrentVertex(currentVertex);
-
         }
     },
 
@@ -62,13 +81,26 @@ var LinePainter = Painter.extend({
             this.preVertex = vertex;
             return;
         }
+
+        var normal = vertex.sub(this.preVertex)._unit()._perp();
+
+
+
         if (this._waitForLeftCap) {
+            this._addLineEndVertexs(this.preVertex, normal);
             // TODO add left line cap
             delete this._waitForLeftCap;
         }
 
-        var normal = vertex.sub(this.preVertex)._unit()._perp();
+        this._addLineEndVertexs(vertex, normal);
 
+
+        this._addJoin(this.preVertex, this.preNormal, this.normal);
+
+        this.preNormal = normal;
+    },
+
+    _addLineEndVertexs: function (vertex, normal) {
         //up extrude normal
         var extrude = normal.clone();
 
@@ -90,21 +122,22 @@ var LinePainter = Painter.extend({
         }
         this.e1 = this.e2;
         this.e2 = this.e3;
-
-        this._addJoin(this.preVertex, this.preNormal, this.normal);
-
-        this.preNormal = normal;
     },
 
     /**
      * Add a vertex data to vertex array
      * @param {Point} point     - vertex point
      * @param {Number} extrude  - the extrude of the point
+     * @param {Boolean} round   - if the line cap is round
      */
-    _addVertex: function (point, extrude) {
-        var n = this.vertexArray.length;
+    _addVertex: function (point, extrude, round) {
+        var n = this.normalArray.length / 3;
+        //a normal is a 2-bit number: yx, normal.x is 0 or 1, normal.y is -1 or 1
+        var normal = (extrude.y < 0 ? -1 : 1) << 1;
+        normal |= round ? 1 : 0;
         // add to vertex array
-        this.vertexArray.push(point.x, point.y, extrude.x, extrude.y);
+        this.vertexArray.push(point.x, point.y);
+        this.normalArray.push(extrude.x, extrude.y, normal);
         return n;
     },
 
