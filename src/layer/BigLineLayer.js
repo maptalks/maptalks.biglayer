@@ -4,12 +4,18 @@ var maptalks = require('maptalks'),
     glMatrix = require('gl-matrix'),
     shaders = require('../shader/Shader'),
     LinePainter = require('../painter/LinePainter'),
+    Color = require('color'),
     BigDataLayer = require('./BigDataLayer');
 
 var vec2 = glMatrix.vec2,
     mat2 = glMatrix.mat2;
 
-var BigLineLayer = module.exports = BigDataLayer.extend({});
+var BigLineLayer = module.exports = BigDataLayer.extend({
+    options : {
+        'blur' : 2
+    }
+
+});
 
 BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
@@ -49,7 +55,7 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
     onCanvasCreate: function () {
         var gl = this.context;
-        var uniforms = ['u_matrix', 'u_linewidth', 'u_color', 'u_opacity', 'u_blur'];
+        var uniforms = ['u_matrix', 'u_scale', 'u_linewidth', 'u_color', 'u_opacity', 'u_blur'];
         var program = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
         this.useProgram(program);
     },
@@ -91,9 +97,10 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
             gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(lineArrays.elementArray), gl.STATIC_DRAW);
 
-            console.log(lineArrays);
-
             this._elementCount = lineArrays.elementArray.length;
+
+            console.log(lineArrays);
+            console.log()
         }
 
         this._drawLines();
@@ -131,18 +138,21 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
     _drawLines: function () {
         var gl = this.context,
+            map = this.getMap(),
             program = gl.program;
         var symbol = {
-            'lineWidth' : 6,
-            'lineOpacity' : 0.6,
-            'lineColor' : [255, 255, 255, 1]
+            'lineWidth' : 12,
+            'lineOpacity' : 1,
+            'lineColor' : 'rgb(255, 255, 0)'
         };
         var m = this.calcMatrices();
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
-        gl.uniform1f(program.u_linewidth, symbol['lineWidth'] / 2 / this.canvas.width);
-        gl.uniform4fv(program.u_color, new Float32Array(symbol['lineColor']));
+        gl.uniform1f(program.u_scale, map.getScale());
+        gl.uniform1f(program.u_linewidth, symbol['lineWidth'] / 2);
+        var color = Color(symbol['lineColor']).rgbaArray().map(function (c, i) { if (i===3) { return c; } else {return c / 255;}});
+        gl.uniform4fv(program.u_color, new Float32Array(color));
         gl.uniform1f(program.u_opacity, symbol['lineOpacity']);
-        gl.uniform1f(program.u_blur, 0.5);
+        gl.uniform1f(program.u_blur, this.layer.options['blur']);
 
         gl.drawElements(gl.TRIANGLES, this._elementCount, gl.UNSIGNED_SHORT, 0);
     },

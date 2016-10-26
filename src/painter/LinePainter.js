@@ -28,6 +28,7 @@ var LinePainter = module.exports = Painter.extend({
         this.vertexArray = [];
         this.normalArray = [];
         this.elementArray = [];
+        this.distance = 0;
 
         maptalks.Util.setOptions(this, options);
     },
@@ -82,25 +83,26 @@ var LinePainter = module.exports = Painter.extend({
             return;
         }
 
+
         var normal = vertex.sub(this.preVertex)._unit()._perp();
 
-
-
         if (this._waitForLeftCap) {
-            this._addLineEndVertexs(this.preVertex, normal);
+            this._addLineEndVertexs(this.preVertex, normal, false, this.distance);
             // TODO add left line cap
             delete this._waitForLeftCap;
         }
 
-        this._addLineEndVertexs(vertex, normal);
+        this.distance += vertex.dist(this.preVertex);
+
+        this._addLineEndVertexs(vertex, normal, false, this.distance);
 
 
-        this._addJoin(this.preVertex, this.preNormal, this.normal);
+        this._addJoin(this.preVertex, this.preNormal, normal);
 
         this.preNormal = normal;
     },
 
-    _addLineEndVertexs: function (vertex, normal) {
+    _addLineEndVertexs: function (vertex, normal, round, linesofar) {
         //up extrude normal
         var extrude = normal.clone();
 
@@ -115,7 +117,7 @@ var LinePainter = module.exports = Painter.extend({
         // down extrude normal
         extrude = normal.mult(-1);
 
-        this.e3 = this._addVertex(vertex, extrude);
+        this.e3 = this._addVertex(vertex, extrude, round, linesofar);
         if (this.e1 >= 0 && this.e2 >= 0) {
             // add to element array
             this.elementArray.push(this.e1, this.e2, this.e3);
@@ -130,14 +132,12 @@ var LinePainter = module.exports = Painter.extend({
      * @param {Number} extrude  - the extrude of the point
      * @param {Boolean} round   - if the line cap is round
      */
-    _addVertex: function (point, extrude, round) {
+    _addVertex: function (point, extrude, round, linesofar) {
         var n = this.normalArray.length / 3;
-        //a normal is a 2-bit number: yx, normal.x is 0 or 1, normal.y is -1 or 1
-        var normal = (extrude.y < 0 ? -1 : 1) << 1;
-        normal |= round ? 1 : 0;
+
         // add to vertex array
         this.vertexArray.push(point.x, point.y);
-        this.normalArray.push(extrude.x, extrude.y, normal);
+        this.normalArray.push(extrude.x, extrude.y, linesofar);
         return n;
     },
 

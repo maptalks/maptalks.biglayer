@@ -10,6 +10,7 @@ attribute vec4 a_pos;
 attribute vec3 a_normal;
 
 uniform mat4 u_matrix;
+uniform float u_scale;
 uniform mediump float u_linewidth;
 uniform lowp vec4 u_color;
 
@@ -22,9 +23,12 @@ void main() {
     v_linewidth = u_linewidth;
 
     // a normal is a 2-bit number: yx, normal.x is 0 or 1, normal.y is -1 or 1
-    v_normal = vec2(mod(abs(a_normal.z), 2.0), a_normal.z / 2.0);
+    // v_normal = vec2(mod(abs(a_normal.z), 2.0), a_normal.z / 2.0);
+    v_normal = a_normal.xy;
 
-    vec4 pos = u_matrix * a_pos;
-    pos.y += a_normal.z / 2.0 * u_linewidth;
-    gl_Position = pos;
+    vec4 pos = a_pos;
+    pos.x += a_normal.x * u_linewidth * u_scale;
+    pos.y += a_normal.y * u_linewidth * u_scale;
+
+    gl_Position = u_matrix * pos;
 }

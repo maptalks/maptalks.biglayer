@@ -10,25 +10,25 @@ var BigPointLayer = module.exports = BigDataLayer.extend({});
 
 BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
-    vertexSource : 'attribute vec4 a_Position;\n' +
-        'attribute float a_Size;\n' +
-        'attribute vec3 a_TexCoord;\n' +
-        'attribute vec4 a_TexOffset;\n' +
-        'uniform mat4 u_Matrix;\n' +
-        'uniform float u_Scale;\n' +
-        'varying vec3 v_TexCoord;\n' +
+    vertexSource : 'attribute vec4 a_pos;\n' +
+        'attribute float a_size;\n' +
+        'attribute vec3 a_texCoord;\n' +
+        'attribute vec4 a_texOffset;\n' +
+        'uniform mat4 u_matrix;\n' +
+        'uniform float u_scale;\n' +
+        'varying vec3 v_texCoord;\n' +
         'void main() {\n' +
-        '  vec4 pos = vec4(a_Position.x + a_TexOffset.x * u_Scale, a_Position.y + a_TexOffset.y * u_Scale, a_Position.z, a_Position.w);\n' +
-        '  gl_Position = u_Matrix * pos;\n' +
-        '  gl_PointSize = a_Size;\n' +
-        '  v_TexCoord = a_TexCoord;\n' +
+        '  vec4 pos = vec4(a_pos.x + a_texOffset.x * u_scale, a_pos.y + a_texOffset.y * u_scale, a_pos.z, a_pos.w);\n' +
+        '  gl_Position = u_matrix * pos;\n' +
+        '  gl_PointSize = a_size;\n' +
+        '  v_texCoord = a_texCoord;\n' +
         '}\n',
 
     fragmentSource : 'precision mediump float;\n' +
-        'uniform sampler2D u_Sampler;\n' +
-        'varying vec3 v_TexCoord;\n' +
+        'uniform sampler2D u_sampler;\n' +
+        'varying vec3 v_texCoord;\n' +
         'void main() {\n' +
-        '  gl_FragColor = texture2D(u_Sampler, vec2(v_TexCoord[0] + gl_PointCoord[0] * v_TexCoord[1], 1.0 + gl_PointCoord[1] * v_TexCoord[2]));\n' +
+        '  gl_FragColor = texture2D(u_sampler, vec2(v_texCoord[0] + gl_PointCoord[0] * v_texCoord[1], 1.0 + gl_PointCoord[1] * v_texCoord[2]));\n' +
         '}\n',
 
     initialize: function (layer) {
@@ -67,16 +67,16 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
     onCanvasCreate: function () {
         var gl = this.context;
-        var uniforms = ['u_Matrix', 'u_Scale'];
+        var uniforms = ['u_matrix', 'u_scale'];
         var program = this.createProgram(this.vertexSource, this.fragmentSource, uniforms);
         this.useProgram(program);
         var buffer = this.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         this.enableVertexAttrib([
-            ['a_Position', 2],
-            ['a_TexCoord', 3],
-            ['a_Size', 1],
-            ['a_TexOffset', 2]
+            ['a_pos', 2],
+            ['a_texCoord', 3],
+            ['a_size', 1],
+            ['a_texOffset', 2]
         ]);
     },
 
@@ -155,7 +155,7 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
         if (!this._textureLoaded) {
             this.loadTexture(this._sprites.canvas);
-            this.enableSampler('u_Sampler');
+            this.enableSampler('u_sampler');
             this._textureLoaded = true;
         }
     },
@@ -163,8 +163,8 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
     _drawMarkers: function () {
         var gl = this.context;
         var m = this.calcMatrices();
-        gl.uniformMatrix4fv(gl.program.u_Matrix, false, m);
-        gl.uniform1f(gl.program.u_Scale, this.getMap().getScale());
+        gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
+        gl.uniform1f(gl.program.u_scale, this.getMap().getScale());
 /*
         var map = this.getMap();
         var center = map._prjToPoint(map._getPrjCenter().add(100000, 1000), map.getMaxZoom());
