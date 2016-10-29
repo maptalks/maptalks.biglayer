@@ -6,10 +6,10 @@ precision mediump float;
 #define highp
 #endif
 
-uniform float u_opacity;
+uniform lowp float u_opacity;
 uniform float u_blur;
 
-varying vec4 v_color;
+varying lowp vec4 v_color;
 varying float v_linewidth;
 varying vec2 v_normal;
 

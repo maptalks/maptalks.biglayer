@@ -4,6 +4,7 @@ var maptalks = require('maptalks'),
     glMatrix = require('gl-matrix'),
     shaders = require('../shader/Shader'),
     LinePainter = require('../painter/LinePainter'),
+    LineAtlas = require('../painter/LineAtlas'),
     Color = require('color'),
     BigDataLayer = require('./BigDataLayer');
 
@@ -65,11 +66,8 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         this.prepareCanvas();
         this._checkSprites();
         var gl = this.context,
-            map = this.getMap(),
-            maxZ = map.getMaxZoom(),
-            scale = map.getScale();
-        var data = this.layer.data,
-            cp, sprite;
+            map = this.getMap();
+        var data = this.layer.data, sprite;
         if (!this._lineArrays) {
             var painter = new LinePainter(gl, map);
             for (var i = 0, l = data.length; i < l; i++) {
@@ -77,30 +75,11 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
             }
             var lineArrays = painter.getArrays();
 
-            var vertexBuffer = this.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-            this.enableVertexAttrib(
-                ['a_pos', 2, 'FLOAT']
-            );
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.vertexArray), gl.STATIC_DRAW);
-
-            var normalBuffer = this.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-            this.enableVertexAttrib(
-                ['a_normal', 3, 'FLOAT']
-            );
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.normalArray), gl.STATIC_DRAW);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-            var elementBuffer = this.createBuffer();
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(lineArrays.elementArray), gl.STATIC_DRAW);
+            this._bufferData(lineArrays);
 
             this._elementCount = lineArrays.elementArray.length;
 
             console.log(lineArrays);
-            console.log()
         }
 
         this._drawLines();
@@ -115,15 +94,46 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         maptalks.renderer.WebGL.prototype.onRemove.apply(this, arguments);
     },
 
+    _bufferData: function (lineArrays) {
+        var gl = this.context;
+        //buffer vertex data
+        var vertexBuffer = this.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        this.enableVertexAttrib(
+            ['a_pos', 2, 'FLOAT']
+        );
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.vertexArray), gl.STATIC_DRAW);
+
+        //buffer normal data
+        var normalBuffer = this.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+        this.enableVertexAttrib(
+            ['a_normal', 3, 'FLOAT']
+        );
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.normalArray), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        //buffer element data
+        var elementBuffer = this.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(lineArrays.elementArray), gl.STATIC_DRAW);
+    },
+
     _checkSprites: function () {
         if (!this._needCheckSprites) {
             return;
         }
+        var me = this;
+        this._atlas = new LineAtlas(this.resources);
         var resources = this.resources;
         var sprites = [];
         if (this.layer.getStyle()) {
             this.layer.getStyle().forEach(function (s) {
-
+                // var sprite = me._atlas.getAtlas(s, false);
+                // if (sprite) {
+                //     sprites.push(sprite);
+                // }
             });
         }
 
@@ -134,6 +144,21 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         }
 
         this._needCheckSprites = false;
+    },
+
+    _getTextCoord: function (props) {
+        var count = 0;
+        for (var i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
+            var style = this.layer._cookedStyles[i];
+            if (style.filter(props) === true && this._atlas.getAtlas(style.symbol)) {
+                count++;
+                return {
+                    'textCoord' : this._sprites.textCoords[count],
+                    'offset'   : this._sprites.offsets[count]
+                };
+            }
+        }
+        return null;
     },
 
     _drawLines: function () {

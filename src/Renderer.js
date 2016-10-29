@@ -101,7 +101,7 @@ module.exports = maptalks.renderer.Canvas.extend({
             var dx = len > cw ? (len - cw) / 2 : 0,
                 dy = len > ch ? (len - ch) / 2 : 0;
             ctx.drawImage(s.canvas, pointer + dx, dy);
-            //0: northwest.x, 1: northwest.y, 2: width, 3: height, 4: size
+            //0: northwest.x, 1: width, 2: height, 3: size
             textCoords.push([pointer / w, len / w, len / h, len]);
             offsets.push(s.offset);
             pointer += len + buffer;
