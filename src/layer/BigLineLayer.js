@@ -5,7 +5,7 @@ var maptalks = require('maptalks'),
     shaders = require('../shader/Shader'),
     LinePainter = require('../painter/LinePainter'),
     LineAtlas = require('../painter/LineAtlas'),
-    Color = require('color'),
+
     BigDataLayer = require('./BigDataLayer');
 
 var vec2 = glMatrix.vec2,
@@ -17,6 +17,14 @@ var BigLineLayer = module.exports = BigDataLayer.extend({
     }
 
 });
+
+
+var defaultSymbol = {
+    'lineWidth' : 12,
+    'lineOpacity' : 1,
+    'lineColor' : 'rgb(0, 0, 0)',
+    'lineDasharray' : [20, 10, 30, 20]
+};
 
 BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
@@ -33,8 +41,9 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         }
 
         var resources = [];
-        if (this.layer.getStyle()) {
-            this.layer.getStyle().forEach(function (s) {
+        if (this.layer._cookedStyles) {
+            this.layer._cookedStyles.forEach(function (s) {
+                s['symbol'] = maptalks.Util.convertResourceUrl(s['symbol']);
                 var res = maptalks.Util.getExternalResources(s['symbol'], true);
                 if (res) {
                     resources = resources.concat(res);
@@ -56,7 +65,7 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
     onCanvasCreate: function () {
         var gl = this.context;
-        var uniforms = ['u_matrix', 'u_scale', 'u_linewidth', 'u_color', 'u_opacity', 'u_blur'];
+        var uniforms = ['u_matrix', 'u_scale', 'u_spritesize', 'u_blur'];
         var program = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
         this.useProgram(program);
     },
@@ -69,17 +78,21 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
             map = this.getMap();
         var data = this.layer.data, sprite;
         if (!this._lineArrays) {
-            var painter = new LinePainter(gl, map);
+            var texCoords = [];
+            var painter = new LinePainter(gl, map),
+                n, symbol;
             for (var i = 0, l = data.length; i < l; i++) {
-                painter.addLine(data[i]);
+                symbol = this._getLineSymbol(data[i][1]);
+                painter.addLine(data[i][0], symbol);
             }
+            // TODO 处理纹理坐标
             var lineArrays = painter.getArrays();
 
             this._bufferData(lineArrays);
 
             this._elementCount = lineArrays.elementArray.length;
 
-            console.log(lineArrays);
+            console.log('lineArrays', lineArrays);
         }
 
         this._drawLines();
@@ -112,6 +125,17 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         );
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.normalArray), gl.STATIC_DRAW);
 
+        //texture coordinates
+        var texBuffer = this.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
+        this.enableVertexAttrib([
+            ['a_texcoord', 4, 'FLOAT'],
+            ['a_opacity', 1, 'FLOAT'],
+            ['a_linewidth', 1, 'FLOAT']
+        ]);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.styleArray), gl.STATIC_DRAW);
+
+        // release binded buffer
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
         //buffer element data
@@ -128,34 +152,55 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         this._atlas = new LineAtlas(this.resources);
         var resources = this.resources;
         var sprites = [];
-        if (this.layer.getStyle()) {
-            this.layer.getStyle().forEach(function (s) {
-                // var sprite = me._atlas.getAtlas(s, false);
-                // if (sprite) {
-                //     sprites.push(sprite);
-                // }
+        if (this.layer._cookedStyles) {
+            this.layer._cookedStyles.forEach(function (s) {
+                var sprite = me._atlas.getAtlas(s.symbol, false);
+                if (sprite) {
+                    sprites.push(sprite);
+                }
             });
         }
 
         this._sprites = this.mergeSprites(sprites);
 
-        if (typeof(window) != 'undefined' && window.MAPTALKS_WEBGL_DEBUG_CANVAS) {
-            window.MAPTALKS_WEBGL_DEBUG_CANVAS.getContext('2d').drawImage(this._sprites.canvas, 0, 0);
+        if (this._sprites && typeof(window) != 'undefined' && window.MAPTALKS_WEBGL_DEBUG_CANVAS) {
+            var debugCanvas = window.MAPTALKS_WEBGL_DEBUG_CANVAS;
+            debugCanvas.getContext('2d').fillRect(0, 0, debugCanvas.width, debugCanvas.height);
+            debugCanvas.getContext('2d').fillStyle = 'rgb(255, 255, 255)';
+            debugCanvas.getContext('2d').fillRect(0, 0, this._sprites.canvas.width, this._sprites.canvas.height);
+            debugCanvas.getContext('2d').drawImage(this._sprites.canvas, 0, 0);
         }
 
         this._needCheckSprites = false;
+
+        if (this._sprites && !this._textureLoaded) {
+            this.loadTexture(this._sprites.canvas);
+            this.enableSampler('u_image');
+            this._textureLoaded = true;
+        }
     },
 
-    _getTextCoord: function (props) {
-        var count = 0;
+    _getLineSymbol: function (props) {
+        var count = -1,
+            style, texture;
         for (var i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
-            var style = this.layer._cookedStyles[i];
-            if (style.filter(props) === true && this._atlas.getAtlas(style.symbol)) {
+            style = this.layer._cookedStyles[i];
+            texture = this._atlas.getAtlas(style.symbol);
+            if (texture) {
                 count++;
-                return {
-                    'textCoord' : this._sprites.textCoords[count],
-                    'offset'   : this._sprites.offsets[count]
-                };
+            }
+            if (style.filter(props) === true) {
+                if (texture) {
+                    return {
+                        'symbol' : style.symbol,
+                        'texCoord' : this._sprites.texCoords[count]
+                    };
+                } else {
+                    return {
+                        'symbol' : style.symbol
+                    };
+                }
+
             }
         }
         return null;
@@ -165,20 +210,23 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         var gl = this.context,
             map = this.getMap(),
             program = gl.program;
-        var symbol = {
-            'lineWidth' : 12,
-            'lineOpacity' : 1,
-            'lineColor' : 'rgb(255, 255, 0)'
-        };
+
+        var symbol = defaultSymbol;
+
         var m = this.calcMatrices();
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
         gl.uniform1f(program.u_scale, map.getScale());
-        gl.uniform1f(program.u_linewidth, symbol['lineWidth'] / 2);
-        var color = Color(symbol['lineColor']).rgbaArray().map(function (c, i) { if (i===3) { return c; } else {return c / 255;}});
-        gl.uniform4fv(program.u_color, new Float32Array(color));
-        gl.uniform1f(program.u_opacity, symbol['lineOpacity']);
+        // gl.uniform1f(program.u_linewidth, symbol['lineWidth'] / 2);
+        // var color = Color(symbol['lineColor']).rgbaArray().map(function (c, i) { if (i===3) { return c; } else {return c / 255;}});
+        // gl.uniform4fv(program.u_color, new Float32Array(color));
+        // gl.uniform1f(program.u_opacity, symbol['lineOpacity']);
         gl.uniform1f(program.u_blur, this.layer.options['blur']);
-
+        var spriteSize = [0, 0];
+        if (this._sprites) {
+            spriteSize = [this._sprites.canvas.width, this._sprites.canvas.height];
+        }
+        console.log(spriteSize);
+        gl.uniform2fv(program.u_spritesize, new Float32Array(spriteSize));
         gl.drawElements(gl.TRIANGLES, this._elementCount, gl.UNSIGNED_SHORT, 0);
     },
 

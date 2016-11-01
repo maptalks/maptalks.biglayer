@@ -2,6 +2,7 @@
 
 var maptalks = require('maptalks'),
     Painter = require('./Painter'),
+    Color = require('color'),
     Point = require('point-geometry');
 
 /**
@@ -28,7 +29,10 @@ var LinePainter = module.exports = Painter.extend({
         this.vertexArray = [];
         this.normalArray = [];
         this.elementArray = [];
+        this.styleArray = [];
         this.distance = 0;
+
+        this._colorMap = {};
 
         maptalks.Util.setOptions(this, options);
     },
@@ -38,18 +42,26 @@ var LinePainter = module.exports = Painter.extend({
         return {
             'vertexArray'  : this.vertexArray,
             'normalArray'  : this.normalArray,
-            'elementArray' : this.elementArray
+            'elementArray' : this.elementArray,
+            'styleArray'   : this.styleArray
         };
     },
 
-    addLine: function (line) {
+    addLine: function (line, style) {
+        if (style.symbol['lineWidth'] <= 0 || style.symbol['lineOpacity'] <= 0) {
+            return this;
+        }
         var vertice = this._getVertice(line);
         var i, l;
+
         //MultiLineString
         if (vertice[0] && Array.isArray(vertice[0][0])) {
+            var count = 0;
             for (var i = 0, l = vertice.length; i < l; i++) {
-                this.addLine(vertice[i]);
+                count += this.addLine(vertice[i]);
             }
+
+            this._addTexCoords(count, style);
             return this;
         }
 
@@ -69,6 +81,8 @@ var LinePainter = module.exports = Painter.extend({
             currentVertex = new Point(vertex[0], vertex[1]);
             this.addCurrentVertex(currentVertex);
         }
+        this._addTexCoords((l - 1) * 4, style);
+        return this;
     },
 
     /**
@@ -83,11 +97,11 @@ var LinePainter = module.exports = Painter.extend({
             return;
         }
 
+        this.e1 = this.e2 = this.e3 = -1;
 
         var normal = vertex.sub(this.preVertex)._unit()._perp();
-
+        this._addLineEndVertexs(this.preVertex, normal, false, this.distance);
         if (this._waitForLeftCap) {
-            this._addLineEndVertexs(this.preVertex, normal, false, this.distance);
             // TODO add left line cap
             delete this._waitForLeftCap;
         }
@@ -100,13 +114,14 @@ var LinePainter = module.exports = Painter.extend({
         this._addJoin(this.preVertex, this.preNormal, normal);
 
         this.preNormal = normal;
+        this.preVertex = vertex;
     },
 
     _addLineEndVertexs: function (vertex, normal, round, linesofar) {
         //up extrude normal
         var extrude = normal.clone();
 
-        this.e3 = this._addVertex(vertex, extrude);
+        this.e3 = this._addVertex(vertex, extrude, 1, round, linesofar);
         if (this.e1 >= 0 && this.e2 >= 0) {
             // add to element array
             this.elementArray.push(this.e1, this.e2, this.e3);
@@ -117,7 +132,7 @@ var LinePainter = module.exports = Painter.extend({
         // down extrude normal
         extrude = normal.mult(-1);
 
-        this.e3 = this._addVertex(vertex, extrude, round, linesofar);
+        this.e3 = this._addVertex(vertex, extrude, 0, round, linesofar);
         if (this.e1 >= 0 && this.e2 >= 0) {
             // add to element array
             this.elementArray.push(this.e1, this.e2, this.e3);
@@ -132,9 +147,8 @@ var LinePainter = module.exports = Painter.extend({
      * @param {Number} extrude  - the extrude of the point
      * @param {Boolean} round   - if the line cap is round
      */
-    _addVertex: function (point, extrude, round, linesofar) {
+    _addVertex: function (point, extrude, direction, round, linesofar) {
         var n = this.normalArray.length / 3;
-
         // add to vertex array
         this.vertexArray.push(point.x, point.y);
         this.normalArray.push(extrude.x, extrude.y, linesofar);
@@ -168,6 +182,23 @@ var LinePainter = module.exports = Painter.extend({
             line = line.coordinates;
         }
         return line;
+    },
+
+    _addTexCoords: function (n, style) {
+        var color = style.symbol['lineColor'] || '#000000';
+        if (!this._colorMap[color]) {
+            this._colorMap[color] = Color(color).rgbaArrayNormalized();
+        }
+        color = this._colorMap[color];
+        for (var i = 0; i < n; i++) {
+            if (style.texCoord) {
+                Array.prototype.push.apply(this.styleArray, style.texCoord);
+                this.styleArray.push(-1);
+            } else {
+                Array.prototype.push.apply(this.styleArray, color);
+            }
+            this.styleArray.push(style.symbol['lineOpacity'] || 1, (style.symbol['lineWidth'] || 2) / 2);
+        }
     }
 
 });

@@ -70,8 +70,14 @@ module.exports = maptalks.renderer.Canvas.extend({
         return null;
     },
 
-    mergeSprites: function (sprites) {
-        if (!sprites) {
+    /**
+     * merge sprites to a large sprite
+     * @param  {Object[]} sprites   - sprites to merge
+     * @param  {Boolean} forPoints  - whether the merged sprite is for points, point's sprites need to be square.
+     * @return {Object}         sprites merged
+     */
+    mergeSprites: function (sprites, forPoint) {
+        if (!sprites || sprites.length === 0) {
             return null;
         }
         //buffer between sprites
@@ -79,11 +85,19 @@ module.exports = maptalks.renderer.Canvas.extend({
         var w = 0,
             h = 0;
         sprites.forEach(function (s) {
-            var len = Math.max(s.canvas.width, s.canvas.height);
-            w += len + buffer;
-            if (len > h) {
-                h = len;
+            if (forPoint) {
+                var len = Math.max(s.canvas.width, s.canvas.height);
+                w += len + buffer;
+                if (len > h) {
+                    h = len;
+                }
+            } else {
+                w += s.canvas.width + buffer;
+                if (s.canvas.height > h) {
+                    h = s.canvas.height
+                }
             }
+
         });
         //opengl texture's size has to be ^2.
         var w = Math.pow(2, Math.ceil(Math.log(w) / Math.LN2)),
@@ -91,24 +105,32 @@ module.exports = maptalks.renderer.Canvas.extend({
 
         var spriteCanvas = maptalks.Canvas.createCanvas(w, h),
             ctx = spriteCanvas.getContext('2d'),
-            textCoords = [],
+            texCoords = [],
             offsets = [];
         var pointer = 0;
         sprites.forEach(function (s) {
+            var dx = 0, dy = 0, len;
             var cw = s.canvas.width,
                 ch = s.canvas.height;
-            var len = Math.max(cw, ch);
-            var dx = len > cw ? (len - cw) / 2 : 0,
+            if (forPoint) {
+                len = Math.max(cw, ch);
+                dx = len > cw ? (len - cw) / 2 : 0;
                 dy = len > ch ? (len - ch) / 2 : 0;
+                //0: northwest.x, 1: width, 2: height, 3: size
+                texCoords.push([pointer / w, len / w, len / h, len]);
+            } else {
+                len = s.canvas.width;
+                texCoords.push([pointer / w, s.canvas.width / w, s.canvas.height / h]);
+            }
+
             ctx.drawImage(s.canvas, pointer + dx, dy);
-            //0: northwest.x, 1: width, 2: height, 3: size
-            textCoords.push([pointer / w, len / w, len / h, len]);
+
             offsets.push(s.offset);
             pointer += len + buffer;
         });
         return {
             'canvas' : spriteCanvas,
-            'textCoords' : textCoords,
+            'texCoords' : texCoords,
             'offsets' : offsets
         };
     },

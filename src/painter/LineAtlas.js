@@ -16,7 +16,7 @@ module.exports = LineAtlas;
  */
 function LineAtlas(resources, options) {
     this.resources = resources;
-    this.options = options;
+    this.options = options || {};
     this.atlas = {};
 }
 
