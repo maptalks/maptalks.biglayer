@@ -11,11 +11,12 @@
     "lint": "eslint src/**/*.js test/**/*.js --fix",
     "test": "gulp test",
     "pretest": "npm run lint",
-    "build": "browserify --external maptalks src/maptalks.webgl.js > dist/maptalks.webgl.js"
+    "build": "browserify --external maptalks -t brfs src/maptalks.webgl.js > dist/maptalks.webgl.js"
   },
   "browserify": {
     "transform": [
-      "browserify-shim"
+      "browserify-shim",
+      "brfs"
     ]
   },
   "browserify-shim": {
@@ -28,14 +29,12 @@
     "eslint-config-maptalks": "^0.2.1",
     "expect.js": "^0.3.1",
     "gulp": "^3.9.0",
-    "gulp-browserify": "^0.5.1",
     "gulp-concat": "^2.6.0",
-    "gulp-footer": "^1.0.5",
     "gulp-gzip": "^1.2.0",
-    "gulp-header": "^1.7.1",
+    "gulp-header": "^1.8.8",
     "gulp-mocha": "^2.2.0",
-    "gulp-rename": "~1.2.2",
     "gulp-uglify": "^1.5.1",
+    "gulp-util": "^3.0.7",
     "karma": "^0.13.22",
     "karma-chrome-launcher": "^1.0.1",
     "karma-expect": "^1.1.2",
@@ -44,10 +43,13 @@
     "minimist": "^1.2.0",
     "mocha": "^2.4.5",
     "phantomjs-prebuilt": "^2.1.7",
-    "sinon": "^1.14.1"
+    "sinon": "^1.14.1",
+    "vinyl-buffer": "^1.0.0",
+    "vinyl-source-stream": "^1.1.0"
   },
   "dependencies": {
     "brfs": "^1.4.3",
+    "color": "^0.11.3",
     "gl-matrix": "^2.3.2",
     "mapbox-gl-shaders": "https://github.com/mapbox/mapbox-gl-shaders.git",
     "point-geometry": "^0.1.0"
