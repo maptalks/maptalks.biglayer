@@ -113,8 +113,7 @@ var LinePainter = module.exports = Painter.extend({
         this.e1 = this.e2 = this.e3 = -1;
 
         var normal = vertex.sub(this.preVertex)._unit()._perp();
-        var length = vertex.dist(this.preVertex);
-        var seglen = length << 1;
+        var seglen = vertex.dist(this.preVertex);
         var nextNormal;
         if (nextVertex) {
             nextNormal = nextVertex.sub(vertex)._unit()._perp();
@@ -123,27 +122,26 @@ var LinePainter = module.exports = Painter.extend({
             this._addLeftJoin();
         }
 
-
-        this._addLineEndVertexs(this.preVertex, this._getLeftNormal(normal, this.preNormal), normal, false, this.distance, seglen + 0);
+        this._addLineEndVertexs(this.preVertex, this._getLeftNormal(normal, this.preNormal), normal, false, this.distance, (seglen << 1) + 0);
         if (this._waitForLeftCap) {
             // TODO add left line cap
             delete this._waitForLeftCap;
         }
 
-        this.distance += length;
+        this.distance += seglen;
 
-        this._addLineEndVertexs(vertex, this._getRightNormal(normal, nextNormal), normal, false, this.distance, seglen + 1);
+        this._addLineEndVertexs(vertex, this._getRightNormal(normal, nextNormal), normal, false, this.distance, (seglen << 1) + 1);
 
         this.preNormal = normal;
         this.preVertex = vertex;
     },
 
-    _addLineEndVertexs: function (vertex, joinNormal, normal, round, linesofar, length) {
+    _addLineEndVertexs: function (vertex, joinNormal, normal, round, linesofar, seglen) {
 
         //up extrude joinNormal
         var extrude = joinNormal.normal[0];
 
-        this.e3 = this._addVertex(vertex, extrude, joinNormal.corner, normal, 1, round, linesofar, length);
+        this.e3 = this._addVertex(vertex, extrude, joinNormal.corner, normal, round, linesofar, seglen);
         if (this.e1 >= 0 && this.e2 >= 0) {
             // add to element array
             this.elementArray.push(this.e1, this.e2, this.e3);
@@ -154,7 +152,7 @@ var LinePainter = module.exports = Painter.extend({
         // down extrude joinNormal
         extrude = joinNormal.normal[1];
 
-        this.e3 = this._addVertex(vertex, extrude, -joinNormal.corner, normal, 0, round, linesofar, length);
+        this.e3 = this._addVertex(vertex, extrude, -joinNormal.corner, normal, round, linesofar, seglen);
         if (this.e1 >= 0 && this.e2 >= 0) {
             // add to element array
             this.elementArray.push(this.e1, this.e2, this.e3);
@@ -169,11 +167,11 @@ var LinePainter = module.exports = Painter.extend({
      * @param {Number} extrude  - the extrude of the point
      * @param {Boolean} round   - if the line cap is round
      */
-    _addVertex: function (point, extrude, corner, normal, direction, round, linesofar, length) {
+    _addVertex: function (point, extrude, corner, normal, round, linesofar, seglen) {
         // add to vertex array
         this.vertexArray.push(point.x, point.y);
 
-        var normals = [this._precise(corner), this._precise(normal.x), this._precise(normal.y), this._precise(extrude.x), this._precise(extrude.y), linesofar, length];
+        var normals = [this._precise(corner), this._precise(normal.x), this._precise(normal.y), this._precise(extrude.x), this._precise(extrude.y), linesofar, seglen];
         var n = this.normalArray.length / normals.length;
         Array.prototype.push.apply(this.normalArray, normals);
         return n;
@@ -232,11 +230,9 @@ var LinePainter = module.exports = Painter.extend({
     _getLeftNormal: function (normal, preNormal) {
         var corner = 0;
         if (preNormal) {
-            if (this.options['lineJoin'] === 'miter') {
-                var jnormal = this._getJoinNormal(preNormal, normal);
-                normal = jnormal.normal;
-                corner = jnormal.corner;
-            }
+            var jnormal = this._getJoinNormal(preNormal, normal);
+            normal = jnormal.normal;
+            corner = jnormal.corner;
         }
         return {
             'normal' : [normal, normal.mult(-1)],
@@ -247,11 +243,9 @@ var LinePainter = module.exports = Painter.extend({
     _getRightNormal: function (normal, nextNormal) {
         var corner = 0;
         if (nextNormal) {
-            if (this.options['lineJoin'] === 'miter') {
-                var jnormal = this._getJoinNormal(normal, nextNormal);
-                normal = jnormal.normal;
-                corner = jnormal.corner;
-            }
+            var jnormal = this._getJoinNormal(normal, nextNormal);
+            normal = jnormal.normal;
+            corner = jnormal.corner;
         }
         return {
             'normal' : [normal, normal.mult(-1)],
@@ -260,13 +254,15 @@ var LinePainter = module.exports = Painter.extend({
     },
 
     _getJoinNormal: function (preNormal, normal) {
-        var angle = normal.angle();
-        angle = angle + (preNormal.angle() - angle) / 2;
-        var r = Math.abs(1 / Math.cos(angle));
-        //default join
-        return {
-            'normal' : new Point(Math.cos(angle) * r, Math.sin(angle) * r),
-            'corner' : Math.sin(angle) * r
+        var joinNormal = preNormal.add(normal)._unit();
+        var cosHalfAngle = joinNormal.x * normal.x + joinNormal.y * normal.y;
+        if (this.options['lineJoin'] === 'miter') {
+            var miterLength = 1 / cosHalfAngle;
+            return {
+                'normal' : joinNormal._mult(miterLength),
+                //miterLength * sin(angle)
+                'corner' : miterLength * Math.sqrt(1 - cosHalfAngle * cosHalfAngle)
+            };
         }
     },
 

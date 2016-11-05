@@ -17,10 +17,7 @@ varying float v_linewidth;
 varying float v_scale;
 varying float v_texture_normal;
 varying float v_linesofar;
-varying float v_linelength;
-
 varying float v_ruler;
-varying float v_seglen;
 
 uniform sampler2D u_image;
 
@@ -39,17 +36,13 @@ void main() {
     if (v_texcoord.q == -1.0) {
         // is a texture fragment
         float linesofar = v_linesofar / v_scale;
-        if (abs(v_ruler) > 1.0) {
-            // linesofar += (abs(v_ruler) - 1.0) * v_seglen * sign(v_ruler) / 4.0;
-            linesofar = v_linelength / v_scale;
-        }
         float texWidth = u_spritesize.x * v_texcoord.t;
         float x = v_texcoord.s + mod(linesofar, texWidth) / texWidth * v_texcoord.t;
         float y = (v_texture_normal + 1.0) / 2.0 * v_texcoord.p;
 
         color = texture2D(u_image, vec2(x, y));
-        if (abs(v_ruler) >= 1.0) {
-            // color = vec4(1.0);
+        if (abs(v_ruler) > 1.0) {
+            color = vec4(1.0);
         }
     } else {
         // a color fragment
