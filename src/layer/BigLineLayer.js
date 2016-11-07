@@ -124,8 +124,7 @@ BigLineLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
             ['a_corner', 1, 'FLOAT'],
             ['a_linenormal', 2, 'FLOAT'],
             ['a_normal', 2, 'FLOAT'],
-            ['a_linesofar', 1, 'FLOAT'],
-            ['a_seglen', 1, 'FLOAT']
+            ['a_linesofar', 1, 'FLOAT']
         ]
         );
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.normalArray), gl.STATIC_DRAW);

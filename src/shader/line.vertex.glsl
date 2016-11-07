@@ -44,35 +44,6 @@ void main() {
     float corner = a_corner * v_linewidth * u_scale;
     float direction = mod(a_seglen, 2.0) - 0.5;
     v_ruler = corner / (a_seglen / 2.0) + sign(direction);
-   /* float seglen = a_seglen / 2.0;
-    float direction = mod(a_seglen, 2.0);
-    if (corner != 0.0) {
-        if (direction >= 1.0) {
-            if (corner > 0.0) {
-                // to the end point
-                v_ruler = corner / seglen * 4.0 + 1.0;
-            } else {
-                v_ruler = 1.0;
-            }
-
-        } else {
-            // to the start point
-            if (corner < 0.0) {
-                // to the end point
-                v_ruler = corner / seglen * 4.0 - 1.0;
-            } else {
-                v_ruler = -1.0;
-            }
-        }
-    } else {
-        if (direction >= 1.0) {
-            // to the end point
-            v_ruler = 1.0;
-        } else {
-            // to the start point
-            v_ruler = -1.0;
-        }
-    }*/
 
     // add linesofar with corner length caused by line-join
     v_linesofar = a_linesofar + corner;
