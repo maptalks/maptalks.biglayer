@@ -17,7 +17,7 @@ module.exports = maptalks.renderer.Canvas.extend({
         var map = this.getMap();
         var size = map.getSize();
         var r = maptalks.Browser.retina ? 2 : 1;
-        this.canvas = maptalks.Canvas.createCanvas(r * size['width'], r * size['height']);
+        this.canvas = maptalks.Canvas.createCanvas(r * size['width'], r * size['height'], map.CanvasClass);
         var gl = this.context = this._createGLContext(this.canvas, this.layer.options['glOptions']);
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         // gl.blendFuncSeparate( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA,
@@ -290,16 +290,18 @@ module.exports = maptalks.renderer.Canvas.extend({
         return m;
     },
 
+    // override this under node
     _createGLContext: function (canvas, options) {
+        var attributes = maptalks.Util.extend({
+            'alpha': true,
+            'antialias': true,
+            'preserveDrawingBuffer': true
+        }, options);
         var names = ['webgl', 'experimental-webgl', 'webkit-3d', 'moz-webgl'];
         var context = null;
         for (var i = 0; i < names.length; ++i) {
             try {
-                context = canvas.getContext(names[i], maptalks.Util.extend({
-                    'alpha': true,
-                    'antialias': true,
-                    'preserveDrawingBuffer': true
-                }, options));
+                context = canvas.getContext(names[i], attributes);
             } catch (e) {
                 // error
             }
