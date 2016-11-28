@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/maptalks/maptalks.webgl.git"
   },
-  "main": "maptalks.webgl.js",
+  "main": "./src/maptalks.webgl.js",
   "scripts": {
     "lint": "eslint src/**/*.js test/**/*.js --fix",
     "test": "gulp test",
