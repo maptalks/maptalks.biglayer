@@ -6,7 +6,7 @@ var maptalks = require('maptalks'),
 var mat4 = glmatix.mat4;
 
 module.exports = maptalks.renderer.Canvas.extend({
-    hitDetect: function (point) {
+    hitDetect: function (/* point */) {
         return false;
     },
 
@@ -94,14 +94,14 @@ module.exports = maptalks.renderer.Canvas.extend({
             } else {
                 w += s.canvas.width + buffer;
                 if (s.canvas.height > h) {
-                    h = s.canvas.height
+                    h = s.canvas.height;
                 }
             }
 
         });
         //opengl texture's size has to be ^2.
-        var w = Math.pow(2, Math.ceil(Math.log(w) / Math.LN2)),
-            h = Math.pow(2, Math.ceil(Math.log(h) / Math.LN2));
+        w = Math.pow(2, Math.ceil(Math.log(w) / Math.LN2));
+        h = Math.pow(2, Math.ceil(Math.log(h) / Math.LN2));
 
         var spriteCanvas = maptalks.Canvas.createCanvas(w, h),
             ctx = spriteCanvas.getContext('2d'),
@@ -160,12 +160,13 @@ module.exports = maptalks.renderer.Canvas.extend({
             var FSIZE = verticesTexCoords.BYTES_PER_ELEMENT;
 
             var STRIDE = 0;
-            for (var i = 0; i < attributes.length; i++) {
+            var i;
+            for (i = 0; i < attributes.length; i++) {
                 STRIDE += (attributes[i][1] || 0);
             }
 
             var offset = 0;
-            for (var i = 0; i < attributes.length; i++) {
+            for (i = 0; i < attributes.length; i++) {
                 attr = gl.getAttribLocation(gl.program, attributes[i][0]);
                 if (attr < 0) {
                     throw new Error('Failed to get the storage location of ' + attributes[i][0]);
@@ -198,42 +199,41 @@ module.exports = maptalks.renderer.Canvas.extend({
      * @param fshader a fragment shader program (string)
      * @return created program object, or null if the creation has failed
      */
-    createProgram: function(vshader, fshader, uniforms) {
-      var gl = this.context;
-      // Create shader object
-      var vertexShader = this._compileShader(gl, gl.VERTEX_SHADER, vshader);
-      var fragmentShader = this._compileShader(gl, gl.FRAGMENT_SHADER, fshader);
-      if (!vertexShader || !fragmentShader) {
-        return null;
-      }
+    createProgram: function (vshader, fshader, uniforms) {
+        var gl = this.context;
+        // Create shader object
+        var vertexShader = this._compileShader(gl, gl.VERTEX_SHADER, vshader);
+        var fragmentShader = this._compileShader(gl, gl.FRAGMENT_SHADER, fshader);
+        if (!vertexShader || !fragmentShader) {
+            return null;
+        }
 
-      // Create a program object
-      var program = gl.createProgram();
-      if (!program) {
-        return null;
-      }
+        // Create a program object
+        var program = gl.createProgram();
+        if (!program) {
+            return null;
+        }
 
-      // Attach the shader objects
-      gl.attachShader(program, vertexShader);
-      gl.attachShader(program, fragmentShader);
+        // Attach the shader objects
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
 
-      // Link the program object
-      gl.linkProgram(program);
+        // Link the program object
+        gl.linkProgram(program);
 
-      // Check the result of linking
-      var linked = gl.getProgramParameter(program, gl.LINK_STATUS);
-      if (!linked) {
-        var error = gl.getProgramInfoLog(program);
-        throw new Error('Failed to link program: ' + error);
-        gl.deleteProgram(program);
-        gl.deleteShader(fragmentShader);
-        gl.deleteShader(vertexShader);
-        return null;
-      }
+        // Check the result of linking
+        var linked = gl.getProgramParameter(program, gl.LINK_STATUS);
+        if (!linked) {
+            var error = gl.getProgramInfoLog(program);
+            gl.deleteProgram(program);
+            gl.deleteShader(fragmentShader);
+            gl.deleteShader(vertexShader);
+            throw new Error('Failed to link program: ' + error);
+        }
 
-      this._initUniforms(program, uniforms);
+        this._initUniforms(program, uniforms);
 
-      return program;
+        return program;
     },
 
     useProgram: function (program) {
@@ -265,13 +265,13 @@ module.exports = maptalks.renderer.Canvas.extend({
 
     enableSampler: function (sampler, texIdx) {
         var gl = this.context;
-        var u_Sampler = this._getUniform(gl.program, sampler);
+        var uSampler = this._getUniform(gl.program, sampler);
         if (!texIdx) {
             texIdx = 0;
         }
         // Set the texture unit to the sampler
-        gl.uniform1i(u_Sampler, texIdx);
-        return u_Sampler;
+        gl.uniform1i(uSampler, texIdx);
+        return uSampler;
     },
 
     calcMatrices: function () {
@@ -290,16 +290,22 @@ module.exports = maptalks.renderer.Canvas.extend({
         return m;
     },
 
-    _createGLContext: function(canvas, options) {
-        var names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"];
+    _createGLContext: function (canvas, options) {
+        var names = ['webgl', 'experimental-webgl', 'webkit-3d', 'moz-webgl'];
         var context = null;
         for (var i = 0; i < names.length; ++i) {
-        try {
-          context = canvas.getContext(names[i], maptalks.Util.extend({'alpha' : true, 'antialias' : true, 'preserveDrawingBuffer' : true}, options));
-        } catch(e) {}
-        if (context) {
-          break;
-        }
+            try {
+                context = canvas.getContext(names[i], maptalks.Util.extend({
+                    'alpha': true,
+                    'antialias': true,
+                    'preserveDrawingBuffer': true
+                }, options));
+            } catch (e) {
+                // error
+            }
+            if (context) {
+                break;
+            }
         }
         return context;
     },
@@ -311,29 +317,29 @@ module.exports = maptalks.renderer.Canvas.extend({
      * @param source shader program (string)
      * @return created shader object, or null if the creation has failed.
      */
-    _compileShader: function(gl, type, source) {
-      // Create shader object
-      var shader = gl.createShader(type);
-      if (shader == null) {
-        throw new Error('unable to create shader');
-      }
+    _compileShader: function (gl, type, source) {
+        // Create shader object
+        var shader = gl.createShader(type);
+        if (shader == null) {
+            throw new Error('unable to create shader');
+        }
 
-      // Set the shader program
-      gl.shaderSource(shader, source);
+        // Set the shader program
+        gl.shaderSource(shader, source);
 
-      // Compile the shader
-      gl.compileShader(shader);
+        // Compile the shader
+        gl.compileShader(shader);
 
-      // Check the result of compilation
-      var compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
-      if (!compiled) {
-        var error = gl.getShaderInfoLog(shader);
+        // Check the result of compilation
+        var compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+        if (!compiled) {
+            var error = gl.getShaderInfoLog(shader);
 
-        gl.deleteShader(shader);
-        throw new Error('Failed to compile shader: ' + error);
-      }
+            gl.deleteShader(shader);
+            throw new Error('Failed to compile shader: ' + error);
+        }
 
-      return shader;
+        return shader;
     },
 
     _initUniforms: function (program, uniforms) {
@@ -344,11 +350,11 @@ module.exports = maptalks.renderer.Canvas.extend({
 
     _getUniform: function (program, uniform) {
         var gl = this.context;
-        var uniform = gl.getUniformLocation(program, uniform);
-        if (!uniform) {
-            throw new Error('Failed to get the storage location of ' + uniform);
+        var uniformLoc = gl.getUniformLocation(program, uniform);
+        if (!uniformLoc) {
+            throw new Error('Failed to get the storage location of ' + uniformLoc);
         }
-        return uniform;
+        return uniformLoc;
     }
 
 });
