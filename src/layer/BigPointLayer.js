@@ -116,6 +116,9 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
     },
 
     _getTexCoord: function (props) {
+        if (!this.layer._cookedStyles) {
+            return null;
+        }
         for (var i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
             if (this.layer._cookedStyles[i].filter(props) === true) {
                 return {
@@ -146,8 +149,11 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         }
 
         this._sprites = this.mergeSprites(sprites, true);
+        if (!this._sprites) {
+            return;
+        }
 
-        if (typeof(window) != 'undefined' && window.MAPTALKS_WEBGL_DEBUG_CANVAS) {
+        if (typeof window != 'undefined' && window.MAPTALKS_WEBGL_DEBUG_CANVAS) {
             window.MAPTALKS_WEBGL_DEBUG_CANVAS.getContext('2d').drawImage(this._sprites.canvas, 0, 0);
         }
 
