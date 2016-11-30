@@ -103,7 +103,8 @@ module.exports = maptalks.renderer.Canvas.extend({
         w = Math.pow(2, Math.ceil(Math.log(w) / Math.LN2));
         h = Math.pow(2, Math.ceil(Math.log(h) / Math.LN2));
 
-        var spriteCanvas = maptalks.Canvas.createCanvas(w, h),
+        var map = this.getMap();
+        var spriteCanvas = maptalks.Canvas.createCanvas(w, h, map.CanvasClass),
             ctx = spriteCanvas.getContext('2d'),
             texCoords = [],
             offsets = [];

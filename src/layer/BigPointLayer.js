@@ -137,14 +137,20 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         var resources = this.resources;
         var sprites = [];
         if (this.layer.getStyle()) {
+            var self = this;
             this.layer.getStyle().forEach(function (s) {
-                var sprite = new maptalks.Marker([0, 0], {
+                var map = self.getMap();
+                var marker = new maptalks.Marker([0, 0], {
                     'symbol' : s['symbol']
-                })
-                ._getSprite(resources);
+                });
+                var dummy = new maptalks.VectorLayer('dummy');
+                dummy.addGeometry(marker);
+                map.addLayer(dummy);
+                var sprite = marker._getSprite(resources);
                 if (sprite) {
                     sprites.push(sprite);
                 }
+                map.removeLayer(dummy);
             });
         }
 
@@ -160,7 +166,11 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         this._needCheckSprites = false;
 
         if (!this._textureLoaded) {
-            this.loadTexture(this._sprites.canvas);
+            var ctx = this._sprites.canvas.getContext('2d');
+            var width = this._sprites.canvas.width;
+            var height = this._sprites.canvas.height;
+            var imageData = ctx.getImageData(0, 0, width, height);
+            this.loadTexture(imageData);
             this.enableSampler('u_sampler');
             this._textureLoaded = true;
         }
