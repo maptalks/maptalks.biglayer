@@ -284,7 +284,7 @@ module.exports = maptalks.renderer.Canvas.extend({
         var m = mat4.create();
         mat4.translate(m, m, [-center.x, -center.y, 0]);
         var ms = mat4.create();
-        mat4.scale(ms, ms, [1 / (scale * size.width / 2), 1 / (scale * -size.height / 2), 1]);
+        mat4.scale(ms, ms, [1 / (scale * size.width / 2), 1 / (scale * size.height / 2), 1]);
 
         mat4.mul(m, ms, m);
 
