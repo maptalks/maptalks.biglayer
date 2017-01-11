@@ -360,6 +360,7 @@ var LinePainter = module.exports = Painter.extend({
      * @param {Point} nextNormal    下一条线段的normal
      */
     _addJoin: function (vertex, preJoinNormal, nextNormal) {
+        //TODO 计算join三角形各个端点的corner值
         //bevel join triangle
         var normal = new Point(0, 0);
         /*            preJoinNormal

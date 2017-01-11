@@ -174,7 +174,6 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         vec2.transformMat4(ret, v2, m);
         console.log(ret);
 */
-        var stride = 8;
         gl.drawArrays(gl.POINTS, 0, this._vertexCount);
     },
 
