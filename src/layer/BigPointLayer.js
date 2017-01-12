@@ -1,44 +1,22 @@
-'use strict';
+import * as maptalks from 'maptalks';
+import BigDataLayer from './BigDataLayer';
+import WebglRenderer from '../Renderer';
+import shaders from '../shader/Shader';
 
-var maptalks = require('maptalks'),
-    glMatrix = require('gl-matrix'),
-    BigDataLayer = require('./BigDataLayer');
+export default class BigPointLayer extends BigDataLayer {
 
-var vec2 = glMatrix.vec2;
+}
 
-var BigPointLayer = module.exports = BigDataLayer.extend({});
+BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
 
-BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
-
-    vertexSource : 'attribute vec4 a_pos;\n' +
-        'attribute float a_size;\n' +
-        'attribute vec3 a_texCoord;\n' +
-        'attribute vec4 a_texOffset;\n' +
-        'uniform mat4 u_matrix;\n' +
-        'uniform float u_scale;\n' +
-        'varying vec3 v_texCoord;\n' +
-        'void main() {\n' +
-        '  vec4 pos = vec4(a_pos.x + a_texOffset.x * u_scale, a_pos.y + a_texOffset.y * u_scale, a_pos.z, a_pos.w);\n' +
-        '  gl_Position = u_matrix * pos;\n' +
-        '  gl_PointSize = a_size;\n' +
-        '  v_texCoord = a_texCoord;\n' +
-        '}\n',
-
-    fragmentSource : 'precision mediump float;\n' +
-        'uniform sampler2D u_sampler;\n' +
-        'varying vec3 v_texCoord;\n' +
-        'void main() {\n' +
-        '  gl_FragColor = texture2D(u_sampler, vec2(v_texCoord[0] + gl_PointCoord[0] * v_texCoord[1], 1.0 + gl_PointCoord[1] * v_texCoord[2]));\n' +
-        '}\n',
-
-    initialize: function (layer) {
-        this.layer = layer;
+    constructor(layer) {
+        super(layer);
         this._needCheckStyle = true;
         this._needCheckSprites = true;
         this._registerEvents();
-    },
+    }
 
-    checkResources:function (geometries) {
+    checkResources() {
         if (!this._needCheckStyle) {
             return null;
         }
@@ -46,7 +24,7 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         var resources = [];
         if (this.layer.getStyle()) {
             this.layer.getStyle().forEach(function (s) {
-                var res = maptalks.Util.getExternalResources(s['symbol'], true);
+                const res = maptalks.Util.getExternalResources(s['symbol'], true);
                 if (res) {
                     resources = resources.concat(res);
                 }
@@ -63,14 +41,14 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         }
 
         return resources;
-    },
+    }
 
-    onCanvasCreate: function () {
-        var gl = this.context;
-        var uniforms = ['u_matrix', 'u_scale'];
-        var program = this.createProgram(this.vertexSource, this.fragmentSource, uniforms);
+    onCanvasCreate() {
+        const gl = this.context;
+        const uniforms = ['u_matrix', 'u_scale'];
+        const program = this.createProgram(shaders.point.vertexSource, shaders.point.fragmentSource, uniforms);
         this.useProgram(program);
-        var buffer = this.createBuffer();
+        const buffer = this.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         this.enableVertexAttrib([
             ['a_pos', 2],
@@ -78,23 +56,23 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
             ['a_size', 1],
             ['a_texOffset', 2]
         ]);
-    },
+    }
 
-    draw: function () {
+    draw() {
         console.time('draw points');
         this.prepareCanvas();
         this._checkSprites();
 
         if (!this._vertexCount) {
-            var map = this.getMap(),
+            const map = this.getMap(),
                 maxZ = map.getMaxZoom();
-            var data = this.layer.data;
-            var vertexTexCoords = [];
+            const data = this.layer.data;
+            const vertexTexCoords = [];
             var cp, tex;
             this._vertexCount = 0;
             var gl = this.context;
             for (var i = 0, l = data.length; i < l; i++) {
-                tex = this._getTexCoord({'properties' : data[i][2]});
+                tex = this._getTexCoord({ 'properties' : data[i][2] });
                 if (tex) {
                     this._vertexCount++;
                     cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ);
@@ -107,16 +85,16 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         this._drawMarkers();
         console.timeEnd('draw points');
         this.completeRender();
-    },
+    }
 
-    onRemove: function () {
+    onRemove() {
         this._removeEvents();
         delete this._sprites;
-        maptalks.renderer.WebGL.prototype.onRemove.apply(this, arguments);
-    },
+        super.onRemove.apply(this, arguments);
+    }
 
-    _getTexCoord: function (props) {
-        for (var i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
+    _getTexCoord(props) {
+        for (let i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
             if (this.layer._cookedStyles[i].filter(props) === true) {
                 return {
                     'texCoord' : this._sprites.texCoords[i],
@@ -125,14 +103,14 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
             }
         }
         return null;
-    },
+    }
 
-    _checkSprites: function () {
+    _checkSprites() {
         if (!this._needCheckSprites) {
             return;
         }
-        var resources = this.resources;
-        var sprites = [];
+        const resources = this.resources;
+        const sprites = [];
         if (this.layer.getStyle()) {
             this.layer.getStyle().forEach(function (s) {
                 var sprite = new maptalks.Marker([0, 0], {
@@ -147,7 +125,7 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
 
         this._sprites = this.mergeSprites(sprites, true);
 
-        if (typeof(window) != 'undefined' && window.MAPTALKS_WEBGL_DEBUG_CANVAS) {
+        if (typeof (window) != 'undefined' && window.MAPTALKS_WEBGL_DEBUG_CANVAS) {
             window.MAPTALKS_WEBGL_DEBUG_CANVAS.getContext('2d').drawImage(this._sprites.canvas, 0, 0);
         }
 
@@ -158,11 +136,11 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
             this.enableSampler('u_sampler');
             this._textureLoaded = true;
         }
-    },
+    }
 
-    _drawMarkers: function () {
-        var gl = this.context;
-        var m = this.calcMatrices();
+    _drawMarkers() {
+        const gl = this.context;
+        const m = this.calcMatrices();
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
         gl.uniform1f(gl.program.u_scale, this.getMap().getScale());
 /*
@@ -175,17 +153,17 @@ BigPointLayer.registerRenderer('webgl', maptalks.renderer.WebGL.extend({
         console.log(ret);
 */
         gl.drawArrays(gl.POINTS, 0, this._vertexCount);
-    },
+    }
 
-    _registerEvents: function () {
+    _registerEvents() {
         this.layer.on('setstyle', this._onStyleChanged, this);
-    },
+    }
 
-    _removeEvents: function () {
+    _removeEvents() {
         this.layer.off('setstyle', this._onStyleChanged, this);
-    },
+    }
 
-    _onStyleChanged: function () {
+    _onStyleChanged() {
         this._needCheckStyle = true;
     }
-}));
+});

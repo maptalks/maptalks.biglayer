@@ -1,24 +1,21 @@
-'use strict';
+import * as maptalks from 'maptalks';
+import { mat4 } from 'gl-matrix';
 
-var maptalks = require('maptalks'),
-    glmatix = require('gl-matrix');
+export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
 
-var mat4 = glmatix.mat4;
-
-module.exports = maptalks.renderer.Canvas.extend({
-    hitDetect: function (point) {
+    hitDetect() {
         return false;
-    },
+    }
 
-    createCanvas: function () {
+    createCanvas() {
         if (this.canvas) {
             return;
         }
-        var map = this.getMap();
-        var size = map.getSize();
-        var r = maptalks.Browser.retina ? 2 : 1;
+        const map = this.getMap();
+        const size = map.getSize();
+        const r = maptalks.Browser.retina ? 2 : 1;
         this.canvas = maptalks.Canvas.createCanvas(r * size['width'], r * size['height']);
-        var gl = this.context = this._createGLContext(this.canvas, this.layer.options['glOptions']);
+        const gl = this.context = this._createGLContext(this.canvas, this.layer.options['glOptions']);
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         // gl.blendFuncSeparate( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA,
         //                  gl.ZERO, gl.ONE );
@@ -32,43 +29,42 @@ module.exports = maptalks.renderer.Canvas.extend({
         if (this.onCanvasCreate) {
             this.onCanvasCreate();
         }
-    },
+    }
 
-    resizeCanvas: function (canvasSize) {
+    resizeCanvas(canvasSize) {
         if (!this.canvas) {
             return;
         }
         var size;
         if (!canvasSize) {
-            var map = this.getMap();
-            size = map.getSize();
+            size = this.getMap().getSize();
         } else {
             size = canvasSize;
         }
-        var r = maptalks.Browser.retina ? 2 : 1;
+        const r = maptalks.Browser.retina ? 2 : 1;
         //retina support
         this.canvas.height = r * size['height'];
         this.canvas.width = r * size['width'];
         this.context.viewport(0, 0, this.canvas.width, this.canvas.height);
-    },
+    }
 
-    clearCanvas: function () {
+    clearCanvas() {
         if (!this.canvas) {
             return;
         }
 
         this.context.clear(this.context.COLOR_BUFFER_BIT);
-    },
+    }
 
-    prepareCanvas: function () {
+    prepareCanvas() {
         if (!this.canvas) {
             this.createCanvas();
         } else {
             this.clearCanvas();
         }
-        this.layer.fire('renderstart', {'context' : this.context});
+        this.layer.fire('renderstart', { 'context' : this.context });
         return null;
-    },
+    }
 
     /**
      * merge sprites to a large sprite
@@ -76,17 +72,17 @@ module.exports = maptalks.renderer.Canvas.extend({
      * @param  {Boolean} forPoints  - whether the merged sprite is for points, point's sprites need to be square.
      * @return {Object}         sprites merged
      */
-    mergeSprites: function (sprites, forPoint) {
+    mergeSprites(sprites, forPoint) {
         if (!sprites || sprites.length === 0) {
             return null;
         }
         //buffer between sprites
-        var buffer = 2;
+        const buffer = 2;
         var w = 0,
             h = 0;
         sprites.forEach(function (s) {
             if (forPoint) {
-                var len = Math.max(s.canvas.width, s.canvas.height);
+                let len = Math.max(s.canvas.width, s.canvas.height);
                 w += len + buffer;
                 if (len > h) {
                     h = len;
@@ -94,23 +90,23 @@ module.exports = maptalks.renderer.Canvas.extend({
             } else {
                 w += s.canvas.width + buffer;
                 if (s.canvas.height > h) {
-                    h = s.canvas.height
+                    h = s.canvas.height;
                 }
             }
 
         });
         //opengl texture's size has to be ^2.
-        var w = Math.pow(2, Math.ceil(Math.log(w) / Math.LN2)),
-            h = Math.pow(2, Math.ceil(Math.log(h) / Math.LN2));
+        w = Math.pow(2, Math.ceil(Math.log(w) / Math.LN2));
+        h = Math.pow(2, Math.ceil(Math.log(h) / Math.LN2));
 
-        var spriteCanvas = maptalks.Canvas.createCanvas(w, h),
+        const spriteCanvas = maptalks.Canvas.createCanvas(w, h),
             ctx = spriteCanvas.getContext('2d'),
             texCoords = [],
             offsets = [];
         var pointer = 0;
         sprites.forEach(function (s) {
-            var dx = 0, dy = 0, len;
-            var cw = s.canvas.width,
+            let dx = 0, dy = 0, len;
+            let cw = s.canvas.width,
                 ch = s.canvas.height;
             if (forPoint) {
                 len = Math.max(cw, ch);
@@ -133,12 +129,12 @@ module.exports = maptalks.renderer.Canvas.extend({
             'texCoords' : texCoords,
             'offsets' : offsets
         };
-    },
+    }
 
-    createBuffer: function () {
-        var gl = this.context;
+    createBuffer() {
+        const gl = this.context;
         // Create the buffer object
-        var buffer = gl.createBuffer();
+        const buffer = gl.createBuffer();
         if (!buffer) {
             throw new Error('Failed to create the buffer object');
         }
@@ -149,24 +145,23 @@ module.exports = maptalks.renderer.Canvas.extend({
         this._buffers.push(buffer);
 
         return buffer;
-    },
+    }
 
-    enableVertexAttrib: function (attributes) {
-        var gl = this.context;
-        var attr;
+    enableVertexAttrib(attributes) {
+        const gl = this.context;
         if (Array.isArray(attributes[0])) {
-            var verticesTexCoords = new Float32Array([0.0, 0.0, 0.0]);
+            const verticesTexCoords = new Float32Array([0.0, 0.0, 0.0]);
 
-            var FSIZE = verticesTexCoords.BYTES_PER_ELEMENT;
+            const FSIZE = verticesTexCoords.BYTES_PER_ELEMENT;
 
-            var STRIDE = 0;
-            for (var i = 0; i < attributes.length; i++) {
+            let STRIDE = 0;
+            for (let i = 0; i < attributes.length; i++) {
                 STRIDE += (attributes[i][1] || 0);
             }
 
-            var offset = 0;
-            for (var i = 0; i < attributes.length; i++) {
-                attr = gl.getAttribLocation(gl.program, attributes[i][0]);
+            let offset = 0;
+            for (let i = 0; i < attributes.length; i++) {
+                let attr = gl.getAttribLocation(gl.program, attributes[i][0]);
                 if (attr < 0) {
                     throw new Error('Failed to get the storage location of ' + attributes[i][0]);
                 }
@@ -175,22 +170,22 @@ module.exports = maptalks.renderer.Canvas.extend({
                 gl.enableVertexAttribArray(attr);
             }
         } else {
-            attr = gl.getAttribLocation(gl.program, attributes[0]);
+            let attr = gl.getAttribLocation(gl.program, attributes[0]);
             gl.vertexAttribPointer(attr, attributes[1], gl[attributes[2] || 'FLOAT'], false, 0, 0);
             gl.enableVertexAttribArray(attr);
         }
 
-    },
+    }
 
-    onRemove: function () {
-        var gl = this.context;
+    onRemove() {
+        const gl = this.context;
         if (this._buffers) {
             this._buffers.forEach(function (b) {
                 gl.deleteBuffer(b);
             });
             delete this._buffers;
         }
-    },
+    }
 
     /**
      * Create the linked program object
@@ -198,54 +193,53 @@ module.exports = maptalks.renderer.Canvas.extend({
      * @param fshader a fragment shader program (string)
      * @return created program object, or null if the creation has failed
      */
-    createProgram: function(vshader, fshader, uniforms) {
-      var gl = this.context;
+    createProgram(vshader, fshader, uniforms) {
+        const gl = this.context;
       // Create shader object
-      var vertexShader = this._compileShader(gl, gl.VERTEX_SHADER, vshader);
-      var fragmentShader = this._compileShader(gl, gl.FRAGMENT_SHADER, fshader);
-      if (!vertexShader || !fragmentShader) {
-        return null;
-      }
+        const vertexShader = this._compileShader(gl, gl.VERTEX_SHADER, vshader);
+        const fragmentShader = this._compileShader(gl, gl.FRAGMENT_SHADER, fshader);
+        if (!vertexShader || !fragmentShader) {
+            return null;
+        }
 
       // Create a program object
-      var program = gl.createProgram();
-      if (!program) {
-        return null;
-      }
+        const program = gl.createProgram();
+        if (!program) {
+            return null;
+        }
 
       // Attach the shader objects
-      gl.attachShader(program, vertexShader);
-      gl.attachShader(program, fragmentShader);
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
 
       // Link the program object
-      gl.linkProgram(program);
+        gl.linkProgram(program);
 
       // Check the result of linking
-      var linked = gl.getProgramParameter(program, gl.LINK_STATUS);
-      if (!linked) {
-        var error = gl.getProgramInfoLog(program);
-        throw new Error('Failed to link program: ' + error);
-        gl.deleteProgram(program);
-        gl.deleteShader(fragmentShader);
-        gl.deleteShader(vertexShader);
-        return null;
-      }
+        const linked = gl.getProgramParameter(program, gl.LINK_STATUS);
+        if (!linked) {
+            const error = gl.getProgramInfoLog(program);
+            gl.deleteProgram(program);
+            gl.deleteShader(fragmentShader);
+            gl.deleteShader(vertexShader);
+            throw new Error('Failed to link program: ' + error);
+        }
 
-      this._initUniforms(program, uniforms);
+        this._initUniforms(program, uniforms);
 
-      return program;
-    },
+        return program;
+    }
 
-    useProgram: function (program) {
-        var gl = this.context;
+    useProgram(program) {
+        const gl = this.context;
         gl.useProgram(program);
         gl.program = program;
         return this;
-    },
+    }
 
-    loadTexture: function (image, texIdx) {
-        var gl = this.context;
-        var texture = gl.createTexture();   // Create a texture object
+    loadTexture(image, texIdx) {
+        const gl = this.context;
+        const texture = gl.createTexture();   // Create a texture object
         if (!texture) {
             throw new Error('Failed to create the texture object');
         }
@@ -261,25 +255,25 @@ module.exports = maptalks.renderer.Canvas.extend({
         // Set the texture image
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
         return texture;
-    },
+    }
 
-    enableSampler: function (sampler, texIdx) {
-        var gl = this.context;
-        var u_Sampler = this._getUniform(gl.program, sampler);
+    enableSampler(sampler, texIdx) {
+        const gl = this.context;
+        const uSampler = this._getUniform(gl.program, sampler);
         if (!texIdx) {
             texIdx = 0;
         }
         // Set the texture unit to the sampler
-        gl.uniform1i(u_Sampler, texIdx);
-        return u_Sampler;
-    },
+        gl.uniform1i(uSampler, texIdx);
+        return uSampler;
+    }
 
-    calcMatrices: function () {
-        var map = this.getMap(),
+    calcMatrices() {
+        const map = this.getMap(),
             maxZ = map.getMaxZoom();
-        var size = map.getSize(),
+        const size = map.getSize(),
             scale = map.getScale();
-        var center = map._prjToPoint(map._getPrjCenter(), maxZ);
+        const center = map._prjToPoint(map._getPrjCenter(), maxZ);
         var m = mat4.create();
         mat4.translate(m, m, [-center.x, -center.y, 0]);
         var ms = mat4.create();
@@ -288,21 +282,23 @@ module.exports = maptalks.renderer.Canvas.extend({
         mat4.mul(m, ms, m);
 
         return m;
-    },
+    }
 
-    _createGLContext: function(canvas, options) {
-        var names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"];
+    _createGLContext(canvas, options) {
+        const names = ['webgl', 'experimental-webgl', 'webkit-3d', 'moz-webgl'];
         var context = null;
-        for (var i = 0; i < names.length; ++i) {
-        try {
-          context = canvas.getContext(names[i], maptalks.Util.extend({'alpha' : true, 'antialias' : true, 'preserveDrawingBuffer' : true}, options));
-        } catch(e) {}
-        if (context) {
-          break;
-        }
+        /*eslint-disable no-empty */
+        for (let i = 0; i < names.length; ++i) {
+            try {
+                context = canvas.getContext(names[i], maptalks.Util.extend({ 'alpha' : true, 'antialias' : true, 'preserveDrawingBuffer' : true }, options));
+            } catch (e) {}
+            if (context) {
+                break;
+            }
         }
         return context;
-    },
+        /*eslint-enable no-empty */
+    }
 
     /**
      * Create a shader object
@@ -311,45 +307,43 @@ module.exports = maptalks.renderer.Canvas.extend({
      * @param source shader program (string)
      * @return created shader object, or null if the creation has failed.
      */
-    _compileShader: function(gl, type, source) {
+    _compileShader(gl, type, source) {
       // Create shader object
-      var shader = gl.createShader(type);
-      if (shader == null) {
-        throw new Error('unable to create shader');
-      }
+        const shader = gl.createShader(type);
+        if (shader == null) {
+            throw new Error('unable to create shader');
+        }
 
       // Set the shader program
-      gl.shaderSource(shader, source);
+        gl.shaderSource(shader, source);
 
       // Compile the shader
-      gl.compileShader(shader);
+        gl.compileShader(shader);
 
       // Check the result of compilation
-      var compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
-      if (!compiled) {
-        var error = gl.getShaderInfoLog(shader);
+        const compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+        if (!compiled) {
+            const error = gl.getShaderInfoLog(shader);
 
-        gl.deleteShader(shader);
-        throw new Error('Failed to compile shader: ' + error);
-      }
+            gl.deleteShader(shader);
+            throw new Error('Failed to compile shader: ' + error);
+        }
 
-      return shader;
-    },
+        return shader;
+    }
 
-    _initUniforms: function (program, uniforms) {
-        for (var i = 0; i < uniforms.length; i++) {
+    _initUniforms(program, uniforms) {
+        for (let i = 0; i < uniforms.length; i++) {
             program[uniforms[i]] = this._getUniform(program, uniforms[i]);
         }
-    },
+    }
 
-    _getUniform: function (program, uniform) {
-        var gl = this.context;
-        var uniform = gl.getUniformLocation(program, uniform);
+    _getUniform(program, uniformName) {
+        const gl = this.context;
+        const uniform = gl.getUniformLocation(program, uniformName);
         if (!uniform) {
             throw new Error('Failed to get the storage location of ' + uniform);
         }
         return uniform;
     }
-
-});
-
+}

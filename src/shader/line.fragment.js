@@ -1,4 +1,5 @@
-#ifdef GL_ES
+export default
+`#ifdef GL_ES
 precision mediump float;
 #else
 #define lowp
@@ -52,4 +53,4 @@ void main() {
 #ifdef OVERDRAW_INSPECTOR
     gl_FragColor = vec4(1.0);
 #endif
-}
+}`;

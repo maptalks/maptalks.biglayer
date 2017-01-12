@@ -1,43 +1,48 @@
 'use strict';
 
-var maptalks = require('maptalks');
+import * as maptalks from 'maptalks';
 
-module.exports = maptalks.Layer.extend({
-    options : {
-        'renderer' : 'webgl'
-    },
+const options = {
+    'renderer' : 'webgl'
+};
 
-    initialize: function (id, data, options) {
-        this.setId(id);
-        this.data = data;
-        var opts = maptalks.Util.extend({}, options);
+export default class BigDataLayer extends maptalks.Layer {
+    constructor(id, data, options) {
+        const opts = maptalks.Util.extend({}, options);
+        var style;
         if (opts['style']) {
-            this.setStyle(opts['style']);
+            style = opts['style'];
             delete opts['style'];
         }
-        maptalks.Util.setOptions(this, opts);
-    },
+        super(id, opts);
+        this.data = data;
+        if (style) {
+            this.setStyle(style);
+        }
+    }
 
-    setStyle: function (style) {
+    setStyle(style) {
         if (!Array.isArray(style)) {
             style = [style];
         }
         this._style = style;
-        this._cookedStyles = maptalks.Util.compileStyle(style);
+        this._cookedStyles = maptalks.MapboxUtil.compileStyle(style);
         /**
          * setstyle event.
          *
-         * @event maptalks.BigPointLayer#setstyle
+         * @event maptalks.BigDataLayer#setstyle
          * @type {Object}
          * @property {String} type - setstyle
-         * @property {maptalks.BigPointLayer} target - layer
+         * @property {maptalks.BigDataLayer} target - layer
          * @property {Object|Object[]}       style - style to set
          */
-        this.fire('setstyle', {'style' : style});
+        this.fire('setstyle', { 'style' : style });
         return this;
-    },
+    }
 
-    getStyle: function () {
+    getStyle() {
         return this._style;
     }
-});
+}
+
+BigDataLayer.mergeOptions(options);

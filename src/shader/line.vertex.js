@@ -1,4 +1,5 @@
-#ifdef GL_ES
+export default
+`#ifdef GL_ES
 precision highp float;
 #else
 #define lowp
@@ -58,4 +59,4 @@ void main() {
         v_texture_normal = sign(a_normal.y);
     }
 
-}
+}`;

@@ -1,9 +1,7 @@
-'use strict';
+// export renderer and painters with package 'webgl'.
+import * as webgl from './index';
 
-var maptalks = require('maptalks');
+export { webgl };
 
-maptalks.renderer.WebGL = require('./Renderer');
-
-maptalks.BigPointLayer = require('./layer/BigPointLayer');
-
-maptalks.BigLineLayer = require('./layer/BigLineLayer');
+// export layers as maptalks.Big*Layer
+export * from './layer';

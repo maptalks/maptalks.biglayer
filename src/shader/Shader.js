@@ -1,9 +1,15 @@
-var fs = require('fs');
-var path = require('path');
+import lineFragment from './line.fragment';
+import lineVertex from './line.vertex';
+import pointFragment from './point.fragment';
+import pointVertex from './point.vertex';
 
-module.exports = {
-  line: {
-    fragmentSource: fs.readFileSync(path.join(__dirname, 'line.fragment.glsl'), 'utf8'),
-    vertexSource: fs.readFileSync(path.join(__dirname, 'line.vertex.glsl'), 'utf8')
-  }
-}
+export default {
+    'line': {
+        'fragmentSource' : lineFragment,
+        'vertexSource' : lineVertex
+    },
+    'point': {
+        'fragmentSource' : pointFragment,
+        'vertexSource' : pointVertex
+    }
+};

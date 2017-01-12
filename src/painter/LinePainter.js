@@ -1,9 +1,14 @@
-'use strict';
+import * as maptalks from 'maptalks';
+import Painter from './Painter';
+import Color from 'color';
+import Point from 'point-geometry';
 
-var maptalks = require('maptalks'),
-    Painter = require('./Painter'),
-    Color = require('color'),
-    Point = require('point-geometry');
+const options = {
+    'lineJoin' : 'miter', // bevel, round, miter
+    'lineCap' : 'butt', //butt, square, round
+    //输入数据为经纬度时, 转化为2d point
+    'project' : true
+};
 
 /**
  * A Line Painter to produce vertex coordinates for WebGL shaders. <br>
@@ -19,18 +24,10 @@ var maptalks = require('maptalks'),
  * @author fuzhenn
  * @class
  */
-var LinePainter = module.exports = Painter.extend({
-    options: {
-        'lineJoin' : 'miter', // bevel, round, miter
-        'lineCap' : 'butt',//butt, square, round
-        //输入数据为经纬度时, 转化为2d point
-        'project' : true
-    },
+export default class LinePainter extends Painter {
 
-    initialize: function (gl, map, options) {
-        this.gl = gl;
-        this.map = map;
-
+    constructor(gl, map, options) {
+        super(gl, map, options);
         // 结果数组
         //-----------
         this.vertexArray = [];
@@ -41,22 +38,20 @@ var LinePainter = module.exports = Painter.extend({
 
         this.distance = 0;
         this._colorMap = {};
-
-        maptalks.Util.setOptions(this, options);
-    },
+    }
 
     /**
      * 返回结果数组
      * @return {Object} 结果数组
      */
-    getArrays: function () {
+    getArrays() {
         return {
             'vertexArray'  : this.vertexArray,
             'normalArray'  : this.normalArray,
             'elementArray' : this.elementArray,
             'styleArray'   : this.styleArray
         };
-    },
+    }
 
     /**
      * 添加一条线数据的坐标数组,  坐标为经纬度或者2d point(坐标方向与屏幕坐标相同).
@@ -69,19 +64,18 @@ var LinePainter = module.exports = Painter.extend({
      * @param {Number[][]|Number[][][]} line - 线坐标数组
      * @param {Object} style - 线的样式, maptalks.js的Symbol
      */
-    addLine: function (line, style) {
+    addLine(line, style) {
         if (style.symbol['lineWidth'] <= 0 || style.symbol['lineOpacity'] <= 0) {
             return this;
         }
         // 当前已处理的element(三角形)数量
-        var prevElementLen = this.elementArray.length;
+        const prevElementLen = this.elementArray.length;
 
-        var vertice = this._getVertice(line);
-        var i, l;
+        const vertice = this._getVertice(line);
 
         //输入是MultiLineString时, 遍历children, 并依次添加处理
         if (vertice[0] && Array.isArray(vertice[0][0])) {
-            for (var i = 0, l = vertice.length; i < l; i++) {
+            for (let i = 0, l = vertice.length; i < l; i++) {
                 this.addLine(vertice[i], style);
             }
             return this;
@@ -89,12 +83,12 @@ var LinePainter = module.exports = Painter.extend({
 
         this._prepareToAdd();
 
-        var maxZ = this.map.getMaxZoom();
+        const maxZ = this.map.getMaxZoom();
 
         //遍历, 依次添加端点
         var currentVertex, nextVertex;
-        for (var i = 0, l = vertice.length; i < l; i++) {
-            var vertex = vertice[i];
+        for (let i = 0, l = vertice.length; i < l; i++) {
+            let vertex = vertice[i];
             if (this.options['project']) {
                 //输入是经纬度时, 转化为2d point
                 vertex = this.map.coordinateToPoint(new maptalks.Coordinate(vertex), maxZ).toArray();
@@ -112,11 +106,11 @@ var LinePainter = module.exports = Painter.extend({
             this.addCurrentVertex(currentVertex, nextVertex);
         }
         // 新增的element数量
-        var elementCount = this.elementArray.length - prevElementLen;
+        const elementCount = this.elementArray.length - prevElementLen;
         // 添加样式数据
         this._addTexCoords(elementCount * 4, style);
         return this;
-    },
+    }
 
     /**
      * 一条线段由四个端点, 两个三角形组成, 如图所示:
@@ -137,7 +131,7 @@ var LinePainter = module.exports = Painter.extend({
      * @param {Point} currentVertex - 当前端点坐标
      * @param {Point} nextVertex    - 下一个端点坐标
      */
-    addCurrentVertex: function (currentVertex, nextVertex) {
+    addCurrentVertex(currentVertex, nextVertex) {
         if (!this.preVertex) {
             // the first vertex.
             // 保存端点到preVertex中, 返回等待下一个端点数据
@@ -164,7 +158,7 @@ var LinePainter = module.exports = Painter.extend({
          */
 
         // 计算当前线段的normal
-        var normal = currentVertex.sub(this.preVertex)._unit()._perp()._mult(-1);
+        const normal = currentVertex.sub(this.preVertex)._unit()._perp()._mult(-1);
         // 计算下一条线段的normal
         var nextNormal;
         if (nextVertex) {
@@ -192,17 +186,17 @@ var LinePainter = module.exports = Painter.extend({
 
         this.preNormal = normal;
         this.preVertex = currentVertex;
-    },
+    }
 
     /**
      * 准备添加新的线
      */
-    _prepareToAdd: function () {
+    _prepareToAdd() {
         this.distance = 0;
 
         delete this.preVertex;
         delete this.preNormal;
-    },
+    }
 
     /**
      * 添加线的端点坐标和normal等到结果数组中
@@ -211,7 +205,7 @@ var LinePainter = module.exports = Painter.extend({
      * @param {Point} normal      - 线段的normal值
      * @param {Number} linesofar  - 当前线总长
      */
-    _addLineEndVertexs: function (vertex, joinNormal, normal, linesofar) {
+    _addLineEndVertexs(vertex, joinNormal, normal, linesofar) {
 
         //up extrude joinNormal
         var extrude = joinNormal.normal[0];
@@ -234,32 +228,32 @@ var LinePainter = module.exports = Painter.extend({
         }
         this.e1 = this.e2;
         this.e2 = this.e3;
-    },
+    }
 
     /**
      * Add a vertex data to vertex array
      * @param {Point} currentVertex     - current vertex
      * @param {Number} normal  - the normal of current line segment
      */
-    _addVertex: function (currentVertex, normal, corner, joinNormal, linesofar) {
+    _addVertex(currentVertex, normal, corner, joinNormal, linesofar) {
         // add to vertex array
         this.vertexArray.push(currentVertex.x, currentVertex.y);
         // joinNormal与线段normal的差值, joinNormal.x, joinNormal.y, normal.x, normal.y, linesofar
-        var normals = [this._precise(corner), this._precise(joinNormal.x), this._precise(joinNormal.y), this._precise(normal.x), this._precise(normal.y), linesofar];
-        var n = this.normalArray.length / normals.length;
+        const normals = [this._precise(corner), this._precise(joinNormal.x), this._precise(joinNormal.y), this._precise(normal.x), this._precise(normal.y), linesofar];
+        const n = this.normalArray.length / normals.length;
         Array.prototype.push.apply(this.normalArray, normals);
         return n;
-    },
+    }
 
     /**
      * Add line cap if the vertex is the first or the last vertex
      * @param {Point} vertex     - vertex point
      */
-    _addLineCap: function (vertex) {
+    _addLineCap() {
         //TODO
-    },
+    }
 
-    _getVertice: function (line) {
+    _getVertice(line) {
         if (line.geometry) {
             //GeoJSON feature
             line = line.geometry.coordinates;
@@ -268,20 +262,20 @@ var LinePainter = module.exports = Painter.extend({
             line = line.coordinates;
         }
         return line;
-    },
+    }
 
     /**
      * 生成线的样式数组并添加到结果数组中
      * @param {Number} n     - 线的element数量
      * @param {Object} style - 线的样式
      */
-    _addTexCoords: function (n, style) {
+    _addTexCoords(n, style) {
         var color = style.symbol['lineColor'] || '#000000';
         if (!this._colorMap[color]) {
             this._colorMap[color] = Color(color).rgbaArrayNormalized();
         }
         color = this._colorMap[color];
-        for (var i = 0; i < n; i++) {
+        for (let i = 0; i < n; i++) {
             if (style.texCoord) {
                 // 模式填充或有dasharray时, 添加三位纹理坐标
                 // 0: x坐标, 1: 纹理长度, 2: 纹理宽度
@@ -296,7 +290,7 @@ var LinePainter = module.exports = Painter.extend({
             // 线的透明度, 线宽的1/2(shader中都是用lineWidth的1/2做计算)
             this.styleArray.push(style.symbol['lineOpacity'] || 1, (style.symbol['lineWidth'] || 2) / 2);
         }
-    },
+    }
 
     /**
      * 计算线段起点的join
@@ -304,15 +298,15 @@ var LinePainter = module.exports = Painter.extend({
      * @param  {[type]} preNormal [description]
      * @return {[type]}           [description]
      */
-    _getStartNormal: function (normal, preNormal) {
+    _getStartNormal(normal, preNormal) {
         return this._getJoinNormal(normal, preNormal, normal);
-    },
+    }
 
-    _getEndNormal: function (normal, nextNormal) {
+    _getEndNormal(normal, nextNormal) {
         return this._getJoinNormal(normal, normal, nextNormal);
-    },
+    }
 
-    _getJoinNormal: function (currentNormal, preNormal, normal) {
+    _getJoinNormal(currentNormal, preNormal, normal) {
         if (!preNormal || !normal) {
             return {
                 'normal' : [currentNormal, currentNormal.mult(-1)],
@@ -320,10 +314,10 @@ var LinePainter = module.exports = Painter.extend({
                 'miterLength' : 0
             };
         }
-        var joinNormal = preNormal.add(normal)._unit();
-        var cosHalfAngle = joinNormal.x * normal.x + joinNormal.y * normal.y;
+        const joinNormal = preNormal.add(normal)._unit();
+        const cosHalfAngle = joinNormal.x * normal.x + joinNormal.y * normal.y;
         // if (this.options['lineJoin'] === 'miter') {
-        var miterLength = 1 / cosHalfAngle;
+        const miterLength = 1 / cosHalfAngle;
         var resultNormal, upSharp;
         console.log(normal.angleWith(preNormal.mult(-1)) * 180 / Math.PI);
         // 线段上垂线与上条线段下垂线的夹角小于180度
@@ -344,11 +338,11 @@ var LinePainter = module.exports = Painter.extend({
             'miterLength' : miterLength
         };
         // }
-    },
+    }
 
-    _precise: function (f) {
+    _precise(f) {
         return Math.round(f * 1E7) / 1E7;
-    },
+    }
 
     /**
      * 参考资料:
@@ -359,7 +353,7 @@ var LinePainter = module.exports = Painter.extend({
      * @param {Point} preJoinNormal 当前的join normal
      * @param {Point} nextNormal    下一条线段的normal
      */
-    _addJoin: function (vertex, preJoinNormal, nextNormal) {
+    _addJoin(vertex, preJoinNormal, nextNormal) {
         //TODO 计算join三角形各个端点的corner值
         //bevel join triangle
         var normal = new Point(0, 0);
@@ -408,4 +402,6 @@ var LinePainter = module.exports = Painter.extend({
         }
 
     }
-});
+}
+
+LinePainter.mergeOptions(options);
