@@ -14,7 +14,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         const map = this.getMap();
         const size = map.getSize();
         const r = maptalks.Browser.retina ? 2 : 1;
-        this.canvas = maptalks.Canvas.createCanvas(r * size['width'], r * size['height']);
+        this.canvas = maptalks.Canvas.createCanvas(r * size['width'], r * size['height'], map.CanvasClass);
         const gl = this.context = this._createGLContext(this.canvas, this.layer.options['glOptions']);
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         // gl.blendFuncSeparate( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA,
@@ -99,7 +99,8 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         w = Math.pow(2, Math.ceil(Math.log(w) / Math.LN2));
         h = Math.pow(2, Math.ceil(Math.log(h) / Math.LN2));
 
-        const spriteCanvas = maptalks.Canvas.createCanvas(w, h),
+        const map = this.getMap();
+        const spriteCanvas = maptalks.Canvas.createCanvas(w, h, map.CanvasClass),
             ctx = spriteCanvas.getContext('2d'),
             texCoords = [],
             offsets = [];
@@ -277,7 +278,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         var m = mat4.create();
         mat4.translate(m, m, [-center.x, -center.y, 0]);
         var ms = mat4.create();
-        mat4.scale(ms, ms, [1 / (scale * size.width / 2), 1 / (scale * -size.height / 2), 1]);
+        mat4.scale(ms, ms, [1 / (scale * size.width / 2), 1 / (scale * size.height / 2), 1]);
 
         mat4.mul(m, ms, m);
 
@@ -285,12 +286,17 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
     }
 
     _createGLContext(canvas, options) {
+        const attributes = maptalks.Util.extend({
+            'alpha': true,
+            'antialias': true,
+            'preserveDrawingBuffer': true
+        }, options);
         const names = ['webgl', 'experimental-webgl', 'webkit-3d', 'moz-webgl'];
         var context = null;
         /*eslint-disable no-empty */
         for (let i = 0; i < names.length; ++i) {
             try {
-                context = canvas.getContext(names[i], maptalks.Util.extend({ 'alpha' : true, 'antialias' : true, 'preserveDrawingBuffer' : true }, options));
+                context = canvas.getContext(names[i], attributes);
             } catch (e) {}
             if (context) {
                 break;
