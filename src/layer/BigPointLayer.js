@@ -2,10 +2,19 @@ import * as maptalks from 'maptalks';
 import BigDataLayer from './BigDataLayer';
 import WebglRenderer from '../Renderer';
 import shaders from '../shader/Shader';
+import kdbush from 'kdbush';
 
 export default class BigPointLayer extends BigDataLayer {
-
+    identify(coordinate, options) {
+        const renderer = this._getRenderer();
+        if (!renderer) {
+            return null;
+        }
+        return renderer.identify(coordinate, options);
+    }
 }
+
+BigPointLayer.registerJSONType('BigPointLayer');
 
 BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
 
@@ -30,7 +39,6 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
                 }
             });
         }
-
 
         this._needCheckStyle = false;
 
@@ -68,18 +76,31 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
                 maxZ = map.getMaxZoom();
             const data = this.layer.data;
             const vertexTexCoords = [];
+            const points = [];
             var cp, tex;
             this._vertexCount = 0;
-            var gl = this.context;
-            for (var i = 0, l = data.length; i < l; i++) {
+            const gl = this.context;
+            const maxIconSize = [0, 0];
+            for (let i = 0, l = data.length; i < l; i++) {
                 tex = this._getTexCoord({ 'properties' : data[i][2] });
                 if (tex) {
                     this._vertexCount++;
                     cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ);
                     vertexTexCoords.push(cp.x, cp.y, tex.texCoord[0], tex.texCoord[1], tex.texCoord[2], tex.texCoord[3], tex.offset.x, tex.offset.y);
+                    points.push([cp.x, cp.y, tex.size, tex.offset, data[i]]);
+                    // find max size of icons, will use it for identify tolerance.
+                    if (tex.size[0] > maxIconSize[0]) {
+                        maxIconSize[0] = tex.size[0];
+                    }
+                    if (tex.size[1] > maxIconSize[1]) {
+                        maxIconSize[1] = tex.size[1];
+                    }
                 }
             }
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexTexCoords), gl.STATIC_DRAW);
+
+            this._maxIconSize = maxIconSize;
+            this._indexData(points);
         }
 
         this._drawMarkers();
@@ -93,12 +114,69 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         super.onRemove.apply(this, arguments);
     }
 
+    identify(coordinate, options) {
+        if (!this._kdIndex) {
+            return null;
+        }
+        const map = this.getMap();
+        const c = map.coordinateToPoint(coordinate, map.getMaxZoom());
+        // scale the icon size to the max zoom level.
+        const scale = map.getScale();
+        const w = scale * this._maxIconSize[0],
+            h = scale * this._maxIconSize[1];
+        const ids = this._kdIndex.range(c.x - w, c.y - h, c.x + w, c.y + h);
+        var filter, limit;
+        if (options) {
+            if (options['filter']) {
+                filter = options['filter'];
+            }
+            if (options['count']) {
+                limit = options['count'];
+            }
+        }
+
+        const result = [];
+        for (let i = 0, l = ids.length; i < l; i++) {
+            let p = this._indexPoints[ids[i]];
+            let x = p[0],
+                y = p[1];
+            let size = p[2],
+                offset = p[3];
+            let extent = [
+                scale * (-size[0] / 2 + offset.x),
+                scale * (-size[1] / 2 + offset.y),
+                scale * (size[0] / 2 + offset.x),
+                scale * (size[1] / 2 + offset.y)
+            ];
+            if (c.x >= (x + extent[0]) &&
+                c.x <= (x + extent[2]) &&
+                c.y >= (y + extent[1]) &&
+                c.y <= (y + extent[3])) {
+                if (!filter || filter(p[4])) {
+                    // p[4] is data
+                    result.push(p[4]);
+                }
+                if (limit && result.length >= limit) {
+                    break;
+                }
+            }
+
+        }
+        return result;
+    }
+
+    _indexData(data) {
+        this._indexPoints = data;
+        this._kdIndex = kdbush(data, null, null, 64, Int32Array);
+    }
+
     _getTexCoord(props) {
         for (let i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
             if (this.layer._cookedStyles[i].filter(props) === true) {
                 return {
                     'texCoord' : this._sprites.texCoords[i],
-                    'offset'   : this._sprites.offsets[i]
+                    'offset'   : this._sprites.offsets[i],
+                    'size'     : this._sprites.sizes[i]
                 };
             }
         }

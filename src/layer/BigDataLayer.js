@@ -7,6 +7,26 @@ const options = {
 };
 
 export default class BigDataLayer extends maptalks.Layer {
+    /**
+     * Reproduce a BigDataLayer from layer's profile JSON.
+     * @param  {Object} layerJSON - layer's profile JSON
+     * @return {maptalks.BigDataLayer}
+     * @static
+     * @private
+     * @function
+     */
+    static fromJSON(profile) {
+        if (!profile || profile['type'] !== this.getJSONType()) {
+            return null;
+        }
+        const constructor = this.prototype.constructor;
+        const layer = new constructor(profile['id'], profile['data'], profile['options']);
+        if (profile['style']) {
+            layer.setStyle(profile['style']);
+        }
+        return layer;
+    }
+
     constructor(id, data, options) {
         const opts = maptalks.Util.extend({}, options);
         var style;
@@ -19,6 +39,27 @@ export default class BigDataLayer extends maptalks.Layer {
         if (style) {
             this.setStyle(style);
         }
+    }
+
+    /**
+     * Export the BigDataLayer's json. <br>
+     * @return {Object} layer's JSON
+     */
+    toJSON() {
+        const json = {
+            'type': this.getJSONType(),
+            'data' : this.data,
+            'id': this.getId()
+        };
+        const options = this.config();
+        const style = this.getStyle();
+        if (options) {
+            json['options'] = options;
+        }
+        if (style) {
+            json['style'] = style;
+        }
+        return json;
     }
 
     setStyle(style) {
