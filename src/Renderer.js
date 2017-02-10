@@ -102,18 +102,20 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         const spriteCanvas = maptalks.Canvas.createCanvas(w, h),
             ctx = spriteCanvas.getContext('2d'),
             texCoords = [],
-            offsets = [];
+            offsets = [],
+            sizes = [];
         var pointer = 0;
         sprites.forEach(function (s) {
             let dx = 0, dy = 0, len;
-            let cw = s.canvas.width,
-                ch = s.canvas.height;
             if (forPoint) {
+                let cw = s.canvas.width,
+                    ch = s.canvas.height;
                 len = Math.max(cw, ch);
                 dx = len > cw ? (len - cw) / 2 : 0;
                 dy = len > ch ? (len - ch) / 2 : 0;
                 //0: northwest.x, 1: width, 2: height, 3: size
                 texCoords.push([pointer / w, len / w, len / h, len]);
+                sizes.push([cw, ch]);
             } else {
                 len = s.canvas.width;
                 texCoords.push([pointer / w, s.canvas.width / w, s.canvas.height / h]);
@@ -124,11 +126,15 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
             offsets.push(s.offset);
             pointer += len + buffer;
         });
-        return {
+        const result = {
             'canvas' : spriteCanvas,
             'texCoords' : texCoords,
             'offsets' : offsets
         };
+        if (forPoint) {
+            result['sizes'] = sizes;
+        }
+        return result;
     }
 
     createBuffer() {

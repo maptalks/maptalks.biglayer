@@ -16,6 +16,8 @@ export default class BigLineLayer extends BigDataLayer {
 
 BigLineLayer.mergeOptions(options);
 
+BigLineLayer.registerJSONType('BigLineLayer');
+
 /*const defaultSymbol = {
     'lineWidth' : 12,
     'lineOpacity' : 1,
@@ -236,3 +238,4 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
         this._needCheckStyle = true;
     }
 });
+
