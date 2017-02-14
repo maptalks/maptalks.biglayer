@@ -30,22 +30,21 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
             return null;
         }
 
-        var resources = [];
+        const resources = [];
         if (this.layer.getStyle()) {
             this.layer.getStyle().forEach(function (s) {
                 const res = maptalks.Util.getExternalResources(s['symbol'], true);
                 if (res) {
-                    resources = resources.concat(res);
+                    resources.push(res);
                 }
             });
         }
 
         this._needCheckStyle = false;
-
         this._needCheckSprites = true;
 
         if (resources.length === 0) {
-            resources = null;
+            return null;
         }
 
         return resources;
@@ -77,15 +76,14 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
             const data = this.layer.data;
             const vertexTexCoords = [];
             const points = [];
-            var cp, tex;
             this._vertexCount = 0;
             const gl = this.context;
             const maxIconSize = [0, 0];
             for (let i = 0, l = data.length; i < l; i++) {
-                tex = this._getTexCoord({ 'properties' : data[i][2] });
+                const tex = this._getTexCoord({ 'properties' : data[i][2] });
                 if (tex) {
                     this._vertexCount++;
-                    cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ);
+                    const cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ);
                     vertexTexCoords.push(cp.x, cp.y, tex.texCoord[0], tex.texCoord[1], tex.texCoord[2], tex.texCoord[3], tex.offset.x, tex.offset.y);
                     points.push([cp.x, cp.y, tex.size, tex.offset, data[i]]);
                     // find max size of icons, will use it for identify tolerance.
@@ -171,6 +169,9 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
     }
 
     _getTexCoord(props) {
+        if (!this.layer._cookedStyles) {
+            return null;
+        }
         for (let i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
             if (this.layer._cookedStyles[i].filter(props) === true) {
                 return {
@@ -190,11 +191,12 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         const resources = this.resources;
         const sprites = [];
         if (this.layer.getStyle()) {
-            this.layer.getStyle().forEach(function (s) {
-                var sprite = new maptalks.Marker([0, 0], {
-                    'symbol' : s['symbol']
-                })
-                ._getSprite(resources);
+            const map = this.getMap();
+            this.layer.getStyle().forEach((style) => {
+                const marker = new maptalks.Marker([0, 0], {
+                    'symbol' : style['symbol']
+                });
+                const sprite = marker._getSprite(resources, map.CanvasClass);
                 if (sprite) {
                     sprites.push(sprite);
                 }
@@ -202,6 +204,9 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         }
 
         this._sprites = this.mergeSprites(sprites, true);
+        if (!this._sprites) {
+            return;
+        }
 
         if (typeof (window) != 'undefined' && window.MAPTALKS_WEBGL_DEBUG_CANVAS) {
             window.MAPTALKS_WEBGL_DEBUG_CANVAS.getContext('2d').drawImage(this._sprites.canvas, 0, 0);
@@ -210,7 +215,11 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         this._needCheckSprites = false;
 
         if (!this._textureLoaded) {
-            this.loadTexture(this._sprites.canvas);
+            const ctx = this._sprites.canvas.getContext('2d');
+            const width = this._sprites.canvas.width;
+            const height = this._sprites.canvas.height;
+            const imageData = ctx.getImageData(0, 0, width, height);
+            this.loadTexture(imageData);
             this.enableSampler('u_sampler');
             this._textureLoaded = true;
         }
@@ -222,11 +231,11 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
         gl.uniform1f(gl.program.u_scale, this.getMap().getScale());
 /*
-        var map = this.getMap();
-        var center = map._prjToPoint(map._getPrjCenter().add(100000, 1000), map.getMaxZoom());
+        const map = this.getMap();
+        const center = map._prjToPoint(map._getPrjCenter().add(100000, 1000), map.getMaxZoom());
         console.log(center);
-        var v2 = vec2.fromValues(center.x, center.y);
-        var ret = vec2.fromValues(0, 0);
+        const v2 = vec2.fromValues(center.x, center.y);
+        const ret = vec2.fromValues(0, 0);
         vec2.transformMat4(ret, v2, m);
         console.log(ret);
 */
