@@ -20,23 +20,21 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
             return null;
         }
 
-        var resources = [];
+        const resources = [];
         if (this.layer.getStyle()) {
             this.layer.getStyle().forEach(function (s) {
                 const res = maptalks.Util.getExternalResources(s['symbol'], true);
                 if (res) {
-                    resources = resources.concat(res);
+                    resources.push(res);
                 }
             });
         }
 
-
         this._needCheckStyle = false;
-
         this._needCheckSprites = true;
 
         if (resources.length === 0) {
-            resources = null;
+            return null;
         }
 
         return resources;
@@ -67,14 +65,13 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
                 maxZ = map.getMaxZoom();
             const data = this.layer.data;
             const vertexTexCoords = [];
-            var cp, tex;
             this._vertexCount = 0;
-            var gl = this.context;
-            for (var i = 0, l = data.length; i < l; i++) {
-                tex = this._getTexCoord({ 'properties' : data[i][2] });
+            const gl = this.context;
+            for (let i = 0, l = data.length; i < l; i++) {
+                const tex = this._getTexCoord({ 'properties' : data[i][2] });
                 if (tex) {
                     this._vertexCount++;
-                    cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ);
+                    const cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ);
                     vertexTexCoords.push(cp.x, cp.y, tex.texCoord[0], tex.texCoord[1], tex.texCoord[2], tex.texCoord[3], tex.offset.x, tex.offset.y);
                 }
             }
@@ -114,20 +111,15 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         const resources = this.resources;
         const sprites = [];
         if (this.layer.getStyle()) {
-            var self = this;
-            this.layer.getStyle().forEach(function (s) {
-                var map = self.getMap();
-                var marker = new maptalks.Marker([0, 0], {
-                    'symbol' : s['symbol']
+            const map = this.getMap();
+            this.layer.getStyle().forEach((style) => {
+                const marker = new maptalks.Marker([0, 0], {
+                    'symbol' : style['symbol']
                 });
-                var dummy = new maptalks.VectorLayer('dummy');
-                dummy.addGeometry(marker);
-                map.addLayer(dummy);
-                var sprite = marker._getSprite(resources);
+                const sprite = marker._getSprite(resources, map.CanvasClass);
                 if (sprite) {
                     sprites.push(sprite);
                 }
-                map.removeLayer(dummy);
             });
         }
 
@@ -143,10 +135,10 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         this._needCheckSprites = false;
 
         if (!this._textureLoaded) {
-            var ctx = this._sprites.canvas.getContext('2d');
-            var width = this._sprites.canvas.width;
-            var height = this._sprites.canvas.height;
-            var imageData = ctx.getImageData(0, 0, width, height);
+            const ctx = this._sprites.canvas.getContext('2d');
+            const width = this._sprites.canvas.width;
+            const height = this._sprites.canvas.height;
+            const imageData = ctx.getImageData(0, 0, width, height);
             this.loadTexture(imageData);
             this.enableSampler('u_sampler');
             this._textureLoaded = true;
@@ -159,11 +151,11 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
         gl.uniform1f(gl.program.u_scale, this.getMap().getScale());
 /*
-        var map = this.getMap();
-        var center = map._prjToPoint(map._getPrjCenter().add(100000, 1000), map.getMaxZoom());
+        const map = this.getMap();
+        const center = map._prjToPoint(map._getPrjCenter().add(100000, 1000), map.getMaxZoom());
         console.log(center);
-        var v2 = vec2.fromValues(center.x, center.y);
-        var ret = vec2.fromValues(0, 0);
+        const v2 = vec2.fromValues(center.x, center.y);
+        const ret = vec2.fromValues(0, 0);
         vec2.transformMat4(ret, v2, m);
         console.log(ret);
 */
