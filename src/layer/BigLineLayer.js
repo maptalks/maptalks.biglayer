@@ -39,13 +39,13 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
             return null;
         }
 
-        var resources = [];
+        const resources = [];
         if (this.layer._cookedStyles) {
             this.layer._cookedStyles.forEach(function (s) {
                 s['symbol'] = maptalks.Util.convertResourceUrl(s['symbol']);
                 const res = maptalks.Util.getExternalResources(s['symbol'], true);
                 if (res) {
-                    resources = resources.concat(res);
+                    resources.push(res);
                 }
             });
         }
@@ -56,7 +56,7 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
         this._needCheckSprites = true;
 
         if (resources.length === 0) {
-            resources = null;
+            return null;
         }
 
         return resources;
@@ -180,8 +180,8 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
     }
 
     _getLineSymbol(props) {
-        var count = -1;
-        for (var i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
+        let count = -1;
+        for (let i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
             let style = this.layer._cookedStyles[i];
             let texture = this._atlas.getAtlas(style.symbol);
             if (texture) {
@@ -217,7 +217,7 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
         // gl.uniform4fv(program.u_color, new Float32Array(color));
         // gl.uniform1f(program.u_opacity, symbol['lineOpacity']);
         gl.uniform1f(program.u_blur, this.layer.options['blur']);
-        var spriteSize = [0, 0];
+        let spriteSize = [0, 0];
         if (this._sprites) {
             spriteSize = [this._sprites.canvas.width, this._sprites.canvas.height];
         }

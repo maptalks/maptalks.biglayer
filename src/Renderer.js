@@ -35,7 +35,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         if (!this.canvas) {
             return;
         }
-        var size;
+        let size;
         if (!canvasSize) {
             size = this.getMap().getSize();
         } else {
@@ -78,7 +78,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         }
         //buffer between sprites
         const buffer = 2;
-        var w = 0,
+        let w = 0,
             h = 0;
         sprites.forEach(function (s) {
             if (forPoint) {
@@ -105,7 +105,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
             texCoords = [],
             offsets = [],
             sizes = [];
-        var pointer = 0;
+        let pointer = 0;
         sprites.forEach(function (s) {
             let dx = 0, dy = 0, len;
             if (forPoint) {
@@ -281,9 +281,9 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         const size = map.getSize(),
             scale = map.getScale();
         const center = map._prjToPoint(map._getPrjCenter(), maxZ);
-        var m = mat4.create();
+        const m = mat4.create();
         mat4.translate(m, m, [-center.x, -center.y, 0]);
-        var ms = mat4.create();
+        const ms = mat4.create();
         mat4.scale(ms, ms, [1 / (scale * size.width / 2), 1 / (scale * size.height / 2), 1]);
 
         mat4.mul(m, ms, m);
@@ -298,8 +298,8 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
             'preserveDrawingBuffer': true
         }, options);
         const names = ['webgl', 'experimental-webgl', 'webkit-3d', 'moz-webgl'];
-        var context = null;
-        /*eslint-disable no-empty */
+        let context = null;
+        /* eslint-disable no-empty */
         for (let i = 0; i < names.length; ++i) {
             try {
                 context = canvas.getContext(names[i], attributes);
@@ -309,7 +309,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
             }
         }
         return context;
-        /*eslint-enable no-empty */
+        /* eslint-enable no-empty */
     }
 
     /**

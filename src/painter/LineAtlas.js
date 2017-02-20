@@ -60,7 +60,7 @@ export default class LineAtlas {
      * @return {Number[]}        size : [width, height]
      */
     _getSize(symbol, round, resources) {
-        var w = 0, h = 0;
+        let w = 0, h = 0;
         const dashArray = symbol['lineDasharray'];
         if (dashArray) {
             for (let i = 0; i < dashArray.length; i++) {

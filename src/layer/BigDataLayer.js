@@ -29,7 +29,7 @@ export default class BigDataLayer extends maptalks.Layer {
 
     constructor(id, data, options) {
         const opts = maptalks.Util.extend({}, options);
-        var style;
+        let style;
         if (opts['style']) {
             style = opts['style'];
             delete opts['style'];
