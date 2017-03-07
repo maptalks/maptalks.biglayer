@@ -23,7 +23,8 @@
     "eslint": "^2.4.0",
     "eslint-config-maptalks": "^0.2.2",
     "gulp": "^3.9.0",
-    "maptalks-build-helpers": "github:maptalks/maptalks-build-helpers"
+    "maptalks": "<2.0.0",
+    "maptalks-build-helpers": "^0.1.0"
   },
   "dependencies": {
     "color": "^0.11.3",
