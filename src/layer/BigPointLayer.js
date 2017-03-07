@@ -123,7 +123,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         const w = scale * this._maxIconSize[0],
             h = scale * this._maxIconSize[1];
         const ids = this._kdIndex.range(c.x - w, c.y - h, c.x + w, c.y + h);
-        var filter, limit;
+        let filter, limit;
         if (options) {
             if (options['filter']) {
                 filter = options['filter'];

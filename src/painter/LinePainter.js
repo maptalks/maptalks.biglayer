@@ -86,7 +86,7 @@ export default class LinePainter extends Painter {
         const maxZ = this.map.getMaxZoom();
 
         //遍历, 依次添加端点
-        var currentVertex, nextVertex;
+        let currentVertex, nextVertex;
         for (let i = 0, l = vertice.length; i < l; i++) {
             let vertex = vertice[i];
             if (this.options['project']) {
@@ -160,7 +160,7 @@ export default class LinePainter extends Painter {
         // 计算当前线段的normal
         const normal = currentVertex.sub(this.preVertex)._unit()._perp()._mult(-1);
         // 计算下一条线段的normal
-        var nextNormal;
+        let nextNormal;
         if (nextVertex) {
             nextNormal = nextVertex.sub(currentVertex)._unit()._perp()._mult(-1);
         }
@@ -176,7 +176,7 @@ export default class LinePainter extends Painter {
         // 增加线段长度到linesofar中
         this.distance += currentVertex.dist(this.preVertex);
         // 类似线段左侧端点的处理, 添加右侧端点(e2, e3)
-        var endNormal = this._getEndNormal(normal, nextNormal);
+        let endNormal = this._getEndNormal(normal, nextNormal);
         this._addLineEndVertexs(currentVertex, endNormal, normal, this.distance);
 
         // 根据lineJoin设置, 将lineJoin分解为三角形并添加结果数组中
@@ -208,7 +208,7 @@ export default class LinePainter extends Painter {
     _addLineEndVertexs(vertex, joinNormal, normal, linesofar) {
 
         //up extrude joinNormal
-        var extrude = joinNormal.normal[0];
+        let extrude = joinNormal.normal[0];
 
         this.e3 = this._addVertex(vertex, extrude, 0, normal, linesofar);
         if (this.e1 >= 0 && this.e2 >= 0) {
@@ -270,7 +270,7 @@ export default class LinePainter extends Painter {
      * @param {Object} style - 线的样式
      */
     _addTexCoords(n, style) {
-        var color = style.symbol['lineColor'] || '#000000';
+        let color = style.symbol['lineColor'] || '#000000';
         if (!this._colorMap[color]) {
             this._colorMap[color] = Color(color).rgbaArrayNormalized();
         }
@@ -318,7 +318,7 @@ export default class LinePainter extends Painter {
         const cosHalfAngle = joinNormal.x * normal.x + joinNormal.y * normal.y;
         // if (this.options['lineJoin'] === 'miter') {
         const miterLength = 1 / cosHalfAngle;
-        var resultNormal, upSharp;
+        let resultNormal, upSharp;
         console.log(normal.angleWith(preNormal.mult(-1)) * 180 / Math.PI);
         // 线段上垂线与上条线段下垂线的夹角小于180度
         if (normal.angleWith(preNormal.mult(-1)) > 0) {
@@ -356,7 +356,7 @@ export default class LinePainter extends Painter {
     _addJoin(vertex, preJoinNormal, nextNormal) {
         //TODO 计算join三角形各个端点的corner值
         //bevel join triangle
-        var normal = new Point(0, 0);
+        const normal = new Point(0, 0);
         /*            preJoinNormal
          *                ↑
          *                .________. prevVertex
@@ -366,7 +366,7 @@ export default class LinePainter extends Painter {
          *     nextVertex !
          *
          */
-        var e1, e2, e3;
+        let e1, e2, e3;
         //添加bevel三角形, 该三角形是miter, bevel, round类型都要添加的
         e1 = this._addVertex(vertex, preJoinNormal.normal[0], 0, normal, false, this.distance);
         e2 = this._addVertex(vertex, preJoinNormal.normal[1], 0, normal, false, this.distance);
@@ -380,7 +380,7 @@ export default class LinePainter extends Painter {
         this.elementArray.push(e1, e2, e3);
 
 
-        var currentJoin = this.options['lineJoin'];
+        const currentJoin = this.options['lineJoin'];
 
         // 判断miter是否超过miterlimit, 如果超过, 则转为bevel
 
