@@ -35,11 +35,12 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
     }
 
     checkResources() {
+        const resources = [];
+
         if (!this._needCheckStyle) {
-            return null;
+            return resources;
         }
 
-        const resources = [];
         if (this.layer._cookedStyles) {
             this.layer._cookedStyles.forEach(function (s) {
                 s['symbol'] = maptalks.Util.convertResourceUrl(s['symbol']);
@@ -50,14 +51,8 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
             });
         }
 
-
         this._needCheckStyle = false;
-
         this._needCheckSprites = true;
-
-        if (resources.length === 0) {
-            return null;
-        }
 
         return resources;
     }

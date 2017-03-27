@@ -9441,11 +9441,12 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
     }
 
     _class.prototype.checkResources = function checkResources() {
+        var resources = [];
+
         if (!this._needCheckStyle) {
-            return null;
+            return resources;
         }
 
-        var resources = [];
         if (this.layer.getStyle()) {
             this.layer.getStyle().forEach(function (s) {
                 var res = maptalks.Util.getExternalResources(s['symbol'], true);
@@ -9457,10 +9458,6 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
 
         this._needCheckStyle = false;
         this._needCheckSprites = true;
-
-        if (resources.length === 0) {
-            return null;
-        }
 
         return resources;
     };
@@ -9705,11 +9702,12 @@ BigLineLayer.registerRenderer('webgl', function (_WebglRenderer) {
     }
 
     _class.prototype.checkResources = function checkResources() {
+        var resources = [];
+
         if (!this._needCheckStyle) {
-            return null;
+            return resources;
         }
 
-        var resources = [];
         if (this.layer._cookedStyles) {
             this.layer._cookedStyles.forEach(function (s) {
                 s['symbol'] = maptalks.Util.convertResourceUrl(s['symbol']);
@@ -9721,12 +9719,7 @@ BigLineLayer.registerRenderer('webgl', function (_WebglRenderer) {
         }
 
         this._needCheckStyle = false;
-
         this._needCheckSprites = true;
-
-        if (resources.length === 0) {
-            return null;
-        }
 
         return resources;
     };

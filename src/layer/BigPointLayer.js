@@ -26,11 +26,12 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
     }
 
     checkResources() {
+        const resources = [];
+
         if (!this._needCheckStyle) {
-            return null;
+            return resources;
         }
 
-        const resources = [];
         if (this.layer.getStyle()) {
             this.layer.getStyle().forEach(function (s) {
                 const res = maptalks.Util.getExternalResources(s['symbol'], true);
@@ -42,10 +43,6 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
 
         this._needCheckStyle = false;
         this._needCheckSprites = true;
-
-        if (resources.length === 0) {
-            return null;
-        }
 
         return resources;
     }
