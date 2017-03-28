@@ -27,7 +27,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
 
     checkResources() {
         if (!this._needCheckStyle) {
-            return null;
+            return [];
         }
 
         const resources = [];
@@ -42,10 +42,6 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
 
         this._needCheckStyle = false;
         this._needCheckSprites = true;
-
-        if (resources.length === 0) {
-            return null;
-        }
 
         return resources;
     }

@@ -22,7 +22,8 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         //
         gl.verbose = true;
 
-        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        // gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
         gl.enable(gl.BLEND);
         gl.disable(gl.DEPTH_TEST);
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
@@ -276,20 +277,23 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
     }
 
     calcMatrices() {
-        const map = this.getMap(),
-            maxZ = map.getMaxZoom();
+        const map = this.getMap();
         const size = map.getSize(),
             scale = map.getScale();
-        const center = map._prjToPoint(map._getPrjCenter(), maxZ);
+        const center = map._prjToPoint(map._getPrjCenter(), map.getMaxZoom());
+        const fov = map.getFov() * Math.PI / 180;
+        const cameraToCenterDistance = 0.5 / Math.tan(fov / 2) * size.height * scale;
+
         const m = mat4.create();
+        mat4.perspective(m, fov, size.width / size.height, 1, cameraToCenterDistance);
+        mat4.scale(m, m, [1, -1, 1]);
+        mat4.translate(m, m, [0, 0, -cameraToCenterDistance]);
+        mat4.rotateX(m, m, map.getPitch() * Math.PI / 180);
+        mat4.rotateZ(m, m, -map.getBearing() * Math.PI / 180);
         mat4.translate(m, m, [-center.x, -center.y, 0]);
-        const ms = mat4.create();
-        mat4.scale(ms, ms, [1 / (scale * size.width / 2), 1 / (scale * size.height / 2), 1]);
-
-        mat4.mul(m, ms, m);
-
         return m;
     }
+
 
     _createGLContext(canvas, options) {
         const attributes = maptalks.Util.extend({
