@@ -55,6 +55,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         }
 
         this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
     prepareCanvas() {
@@ -63,7 +64,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         } else {
             this.clearCanvas();
         }
-        this.layer.fire('renderstart', { 'context' : this.gl });
+        this.layer.fire('renderstart', { 'context' : this.context, 'gl' : this.gl });
         return null;
     }
 
