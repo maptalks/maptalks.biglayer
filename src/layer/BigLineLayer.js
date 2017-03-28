@@ -72,7 +72,7 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
         console.time('draw lines');
         this.prepareCanvas();
         this._checkSprites();
-        const gl = this.context,
+        const gl = this.gl,
             map = this.getMap();
         const data = this.layer.data;
         if (!this._lineArrays) {
@@ -105,7 +105,7 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
     }
 
     _bufferData(lineArrays) {
-        const gl = this.context;
+        const gl = this.gl;
         //buffer vertex data
         const vertexBuffer = this.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -205,7 +205,7 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
     }
 
     _drawLines() {
-        const gl = this.context,
+        const gl = this.gl,
             map = this.getMap(),
             program = gl.program;
 

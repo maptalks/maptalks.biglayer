@@ -3,19 +3,16 @@ import { mat4 } from 'gl-matrix';
 
 export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
 
-    hitDetect() {
-        return false;
-    }
-
     createCanvas() {
         if (this.canvas) {
             return;
         }
+
         const map = this.getMap();
         const size = map.getSize();
         const r = maptalks.Browser.retina ? 2 : 1;
         this.canvas = maptalks.Canvas.createCanvas(r * size['width'], r * size['height'], map.CanvasClass);
-        const gl = this.context = this._createGLContext(this.canvas, this.layer.options['glOptions']);
+        const gl = this.gl = this._createGLContext(this.canvas, this.layer.options['glOptions']);
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         // gl.blendFuncSeparate( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA,
         //                  gl.ZERO, gl.ONE );
@@ -30,6 +27,9 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         if (this.onCanvasCreate) {
             this.onCanvasCreate();
         }
+
+        this.buffer = maptalks.Canvas.createCanvas(this.canvas.width, this.canvas.height, map.CanvasClass);
+        this.context = this.buffer.getContext('2d');
     }
 
     resizeCanvas(canvasSize) {
@@ -46,7 +46,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         //retina support
         this.canvas.height = r * size['height'];
         this.canvas.width = r * size['width'];
-        this.context.viewport(0, 0, this.canvas.width, this.canvas.height);
+        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     }
 
     clearCanvas() {
@@ -54,7 +54,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
             return;
         }
 
-        this.context.clear(this.context.COLOR_BUFFER_BIT);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     }
 
     prepareCanvas() {
@@ -63,7 +63,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         } else {
             this.clearCanvas();
         }
-        this.layer.fire('renderstart', { 'context' : this.context });
+        this.layer.fire('renderstart', { 'context' : this.gl });
         return null;
     }
 
@@ -140,7 +140,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
     }
 
     createBuffer() {
-        const gl = this.context;
+        const gl = this.gl;
         // Create the buffer object
         const buffer = gl.createBuffer();
         if (!buffer) {
@@ -156,7 +156,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
     }
 
     enableVertexAttrib(attributes) {
-        const gl = this.context;
+        const gl = this.gl;
         if (Array.isArray(attributes[0])) {
             const verticesTexCoords = new Float32Array([0.0, 0.0, 0.0]);
 
@@ -186,7 +186,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
     }
 
     onRemove() {
-        const gl = this.context;
+        const gl = this.gl;
         if (this._buffers) {
             this._buffers.forEach(function (b) {
                 gl.deleteBuffer(b);
@@ -202,7 +202,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
      * @return created program object, or null if the creation has failed
      */
     createProgram(vshader, fshader, uniforms) {
-        const gl = this.context;
+        const gl = this.gl;
       // Create shader object
         const vertexShader = this._compileShader(gl, gl.VERTEX_SHADER, vshader);
         const fragmentShader = this._compileShader(gl, gl.FRAGMENT_SHADER, fshader);
@@ -239,14 +239,14 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
     }
 
     useProgram(program) {
-        const gl = this.context;
+        const gl = this.gl;
         gl.useProgram(program);
         gl.program = program;
         return this;
     }
 
     loadTexture(image, texIdx) {
-        const gl = this.context;
+        const gl = this.gl;
         const texture = gl.createTexture();   // Create a texture object
         if (!texture) {
             throw new Error('Failed to create the texture object');
@@ -266,7 +266,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
     }
 
     enableSampler(sampler, texIdx) {
-        const gl = this.context;
+        const gl = this.gl;
         const uSampler = this._getUniform(gl.program, sampler);
         if (!texIdx) {
             texIdx = 0;
@@ -294,6 +294,31 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         return m;
     }
 
+    getCanvasImage() {
+        const canvasImg = super.getCanvasImage();
+        if (canvasImg && canvasImg.image) {
+            const canvas = canvasImg.image;
+            if (this.buffer.width !== canvas.width || this.buffer.height !== canvas.height || !this._preserveBuffer) {
+                this.buffer.width = canvas.width;
+                this.buffer.height = canvas.height;
+            }
+            if (!this._preserveBuffer) {
+                this.context.drawImage(canvas, 0, 0);
+            }
+            canvasImg.image = this.buffer;
+        }
+        return canvasImg;
+    }
+
+    onZoomStart() {
+        this._preserveBuffer = true;
+        super.onZoomStart.apply(this, arguments);
+    }
+
+    onZoomEnd() {
+        this._preserveBuffer = false;
+        super.onZoomEnd.apply(this, arguments);
+    }
 
     _createGLContext(canvas, options) {
         const attributes = maptalks.Util.extend({
@@ -355,7 +380,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
     }
 
     _getUniform(program, uniformName) {
-        const gl = this.context;
+        const gl = this.gl;
         const uniform = gl.getUniformLocation(program, uniformName);
         if (!uniform) {
             throw new Error('Failed to get the storage location of ' + uniform);

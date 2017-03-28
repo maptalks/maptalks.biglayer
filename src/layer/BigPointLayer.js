@@ -47,7 +47,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
     }
 
     onCanvasCreate() {
-        const gl = this.context;
+        const gl = this.gl;
         const uniforms = ['u_matrix', 'u_scale'];
         const program = this.createProgram(shaders.point.vertexSource, shaders.point.fragmentSource, uniforms);
         this.useProgram(program);
@@ -73,7 +73,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
             const vertexTexCoords = [];
             const points = [];
             this._vertexCount = 0;
-            const gl = this.context;
+            const gl = this.gl;
             const maxIconSize = [0, 0];
             for (let i = 0, l = data.length; i < l; i++) {
                 const tex = this._getTexCoord({ 'properties' : data[i][2] });
@@ -222,7 +222,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
     }
 
     _drawMarkers() {
-        const gl = this.context;
+        const gl = this.gl;
         const m = this.calcMatrices();
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
         gl.uniform1f(gl.program.u_scale, this.getMap().getScale());
