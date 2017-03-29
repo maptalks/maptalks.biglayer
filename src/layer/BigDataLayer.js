@@ -3,9 +3,7 @@
 import * as maptalks from 'maptalks';
 
 const options = {
-    'renderer' : 'webgl',
-    'doubleBuffer' : true,
-    'cursor': 'pointer'
+    'renderer' : 'webgl'
 };
 
 export default class BigDataLayer extends maptalks.Layer {
