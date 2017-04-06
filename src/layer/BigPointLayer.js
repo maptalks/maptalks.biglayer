@@ -55,9 +55,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         this.enableVertexAttrib([
             ['a_pos', 2],
-            ['a_texCoord', 3],
-            ['a_size', 1],
-            ['a_texOffset', 2]
+            ['a_sprite_idx', 1]
         ]);
     }
 
@@ -80,7 +78,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
                 if (tex) {
                     this._vertexCount++;
                     const cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ);
-                    vertexTexCoords.push(cp.x, cp.y, tex.texCoord[0], tex.texCoord[1], tex.texCoord[2], tex.texCoord[3], tex.offset.x, tex.offset.y);
+                    vertexTexCoords.push(cp.x, cp.y, tex.idx);
                     points.push([cp.x, cp.y, tex.size, tex.offset, data[i]]);
                     // find max size of icons, will use it for identify tolerance.
                     if (tex.size[0] > maxIconSize[0]) {
@@ -105,6 +103,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
     onRemove() {
         this._removeEvents();
         delete this._sprites;
+        delete this._uSprite;
         super.onRemove.apply(this, arguments);
     }
 
@@ -171,6 +170,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         for (let i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
             if (this.layer._cookedStyles[i].filter(props) === true) {
                 return {
+                    'idx' : i,
                     'texCoord' : this._sprites.texCoords[i],
                     'offset'   : this._sprites.offsets[i],
                     'size'     : this._sprites.sizes[i]
@@ -188,7 +188,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         const sprites = [];
         if (this.layer.getStyle()) {
             const map = this.getMap();
-            this.layer.getStyle().forEach((style) => {
+            this.layer.getStyle().forEach(style => {
                 const marker = new maptalks.Marker([0, 0], {
                     'symbol' : style['symbol']
                 });
@@ -218,6 +218,13 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
             this.loadTexture(imageData);
             this.enableSampler('u_sampler');
             this._textureLoaded = true;
+
+            const uSprite = this._uSprite = [];
+            for (let i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
+                uSprite.push.apply(uSprite, this._sprites.texCoords[i]);
+                uSprite.push(this._sprites.offsets[i].x, this._sprites.offsets[i].y);
+            }
+            this.gl.program['u_sprite'] = this._getUniform(this.gl.program, 'u_sprite');
         }
     }
 
@@ -226,15 +233,8 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         const m = this.calcMatrices();
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
         gl.uniform1f(gl.program.u_scale, this.getMap().getScale());
-/*
-        const map = this.getMap();
-        const center = map._prjToPoint(map._getPrjCenter().add(100000, 1000), map.getMaxZoom());
-        console.log(center);
-        const v2 = vec2.fromValues(center.x, center.y);
-        const ret = vec2.fromValues(0, 0);
-        vec2.transformMat4(ret, v2, m);
-        console.log(ret);
-*/
+        gl.uniform1fv(gl.program.u_sprite, this._uSprite);
+
         gl.drawArrays(gl.POINTS, 0, this._vertexCount);
     }
 
