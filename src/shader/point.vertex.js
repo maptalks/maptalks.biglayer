@@ -1,6 +1,6 @@
 import { Browser } from 'maptalks';
 
-const count = (Browser.ie11 || Browser.edge) ? 504 : 3900;
+const count = (Browser.ie || Browser.edge) ? 504 : 3900;
 export default
 `
 // marker's 2d point at max zoom
