@@ -6209,7 +6209,12 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
 
     WebglRenderer.prototype._initUniforms = function _initUniforms(program, uniforms) {
         for (var i = 0; i < uniforms.length; i++) {
-            program[uniforms[i]] = this._getUniform(program, uniforms[i]);
+            var name = uniforms[i];
+            var b = name.indexOf('[');
+            if (b >= 0) {
+                name = name.substring(0, b);
+            }
+            program[name] = this._getUniform(program, uniforms[i]);
         }
     };
 

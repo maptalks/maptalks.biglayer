@@ -379,7 +379,12 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
 
     _initUniforms(program, uniforms) {
         for (let i = 0; i < uniforms.length; i++) {
-            program[uniforms[i]] = this._getUniform(program, uniforms[i]);
+            let name = uniforms[i];
+            let b = name.indexOf('[');
+            if (b >= 0) {
+                name = name.substring(0, b);
+            }
+            program[name] = this._getUniform(program, uniforms[i]);
         }
     }
 
