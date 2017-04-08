@@ -319,7 +319,6 @@ export default class LinePainter extends Painter {
         // if (this.options['lineJoin'] === 'miter') {
         const miterLength = 1 / cosHalfAngle;
         let resultNormal, upSharp;
-        console.log(normal.angleWith(preNormal.mult(-1)) * 180 / Math.PI);
         // 线段上垂线与上条线段下垂线的夹角小于180度
         if (normal.angleWith(preNormal.mult(-1)) > 0) {
             //上端是锐角

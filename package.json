@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "color": "^0.11.3",
+    "earcut": "^2.1.1",
     "gl-matrix": "^2.3.2",
     "kdbush": "^1.0.1",
     "point-geometry": "^0.1.0",

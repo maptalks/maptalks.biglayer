@@ -48,7 +48,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
 
     onCanvasCreate() {
         const gl = this.gl;
-        const uniforms = ['u_matrix', 'u_scale'];
+        const uniforms = ['u_matrix', 'u_scale', 'u_sprite'];
         const program = this.createProgram(shaders.point.vertexSource, shaders.point.fragmentSource, uniforms);
         this.useProgram(program);
         const buffer = this.createBuffer();
@@ -224,7 +224,6 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
                 uSprite.push.apply(uSprite, this._sprites.texCoords[i]);
                 uSprite.push(this._sprites.offsets[i].x, this._sprites.offsets[i].y);
             }
-            this.gl.program['u_sprite'] = this._getUniform(this.gl.program, 'u_sprite');
         }
     }
 

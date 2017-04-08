@@ -9010,7 +9010,6 @@ var LinePainter = function (_Painter) {
         var miterLength = 1 / cosHalfAngle;
         var resultNormal = void 0,
             upSharp = void 0;
-        console.log(normal.angleWith(preNormal.mult(-1)) * 180 / Math.PI);
         // 线段上垂线与上条线段下垂线的夹角小于180度
         if (normal.angleWith(preNormal.mult(-1)) > 0) {
             //上端是锐角
@@ -9494,7 +9493,7 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
 
     _class.prototype.onCanvasCreate = function onCanvasCreate() {
         var gl = this.gl;
-        var uniforms = ['u_matrix', 'u_scale'];
+        var uniforms = ['u_matrix', 'u_scale', 'u_sprite'];
         var program = this.createProgram(shaders.point.vertexSource, shaders.point.fragmentSource, uniforms);
         this.useProgram(program);
         var buffer = this.createBuffer();
@@ -9663,7 +9662,6 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
                 uSprite.push.apply(uSprite, this._sprites.texCoords[i]);
                 uSprite.push(this._sprites.offsets[i].x, this._sprites.offsets[i].y);
             }
-            this.gl.program['u_sprite'] = this._getUniform(this.gl.program, 'u_sprite');
         }
     };
 
@@ -9719,11 +9717,11 @@ BigLineLayer.registerJSONType('BigLineLayer');
     'lineDasharray' : [20, 10, 30, 20]
 };*/
 
-BigLineLayer.registerRenderer('webgl', function (_WebglRenderer) {
-    inherits(_class, _WebglRenderer);
+var BigLineRenderer = function (_WebglRenderer) {
+    inherits(BigLineRenderer, _WebglRenderer);
 
-    function _class(layer) {
-        classCallCheck(this, _class);
+    function BigLineRenderer(layer) {
+        classCallCheck(this, BigLineRenderer);
 
         var _this2 = possibleConstructorReturn(this, _WebglRenderer.call(this, layer));
 
@@ -9733,7 +9731,7 @@ BigLineLayer.registerRenderer('webgl', function (_WebglRenderer) {
         return _this2;
     }
 
-    _class.prototype.checkResources = function checkResources() {
+    BigLineRenderer.prototype.checkResources = function checkResources() {
         if (!this._needCheckStyle) {
             return null;
         }
@@ -9760,78 +9758,28 @@ BigLineLayer.registerRenderer('webgl', function (_WebglRenderer) {
         return resources;
     };
 
-    _class.prototype.onCanvasCreate = function onCanvasCreate() {
+    BigLineRenderer.prototype.onCanvasCreate = function onCanvasCreate() {
         var uniforms = ['u_matrix', 'u_scale', 'u_spritesize', 'u_blur'];
-        var program = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
-        this.useProgram(program);
+        this._lineProgram = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
     };
 
-    _class.prototype.draw = function draw() {
+    BigLineRenderer.prototype.draw = function draw() {
         console.time('draw lines');
         this.prepareCanvas();
-        this._checkSprites();
-        var gl = this.gl,
-            map = this.getMap();
-        var data = this.layer.data;
-        if (!this._lineArrays) {
-            var painter = new LinePainter(gl, map),
-                symbol = void 0;
-            for (var i = 0, l = data.length; i < l; i++) {
-                symbol = this._getLineSymbol(data[i][1]);
-                painter.addLine(data[i][0], symbol);
-            }
-            // TODO 处理纹理坐标
-            var lineArrays = painter.getArrays();
-
-            this._bufferData(lineArrays);
-
-            this._elementCount = lineArrays.elementArray.length;
-
-            console.log('lineArrays', lineArrays);
-        }
 
         this._drawLines();
         console.timeEnd('draw lines');
         this.completeRender();
     };
 
-    _class.prototype.onRemove = function onRemove() {
+    BigLineRenderer.prototype.onRemove = function onRemove() {
         this._removeEvents();
         delete this._sprites;
         delete this._lineArrays;
         _WebglRenderer.prototype.onRemove.apply(this, arguments);
     };
 
-    _class.prototype._bufferData = function _bufferData(lineArrays) {
-        var gl = this.gl;
-        //buffer vertex data
-        var vertexBuffer = this.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-        this.enableVertexAttrib(['a_pos', 2, 'FLOAT']);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.vertexArray), gl.STATIC_DRAW);
-
-        //buffer normal data
-        var normalBuffer = this.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-        this.enableVertexAttrib([['a_corner', 1, 'FLOAT'], ['a_linenormal', 2, 'FLOAT'], ['a_normal', 2, 'FLOAT'], ['a_linesofar', 1, 'FLOAT']]);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.normalArray), gl.STATIC_DRAW);
-
-        //texture coordinates
-        var texBuffer = this.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
-        this.enableVertexAttrib([['a_texcoord', 4, 'FLOAT'], ['a_opacity', 1, 'FLOAT'], ['a_linewidth', 1, 'FLOAT']]);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.styleArray), gl.STATIC_DRAW);
-
-        // release binded buffer
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-        //buffer element data
-        var elementBuffer = this.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(lineArrays.elementArray), gl.STATIC_DRAW);
-    };
-
-    _class.prototype._checkSprites = function _checkSprites() {
+    BigLineRenderer.prototype._checkSprites = function _checkSprites() {
         var _this3 = this;
 
         if (!this._needCheckSprites) {
@@ -9867,7 +9815,7 @@ BigLineLayer.registerRenderer('webgl', function (_WebglRenderer) {
         }
     };
 
-    _class.prototype._getLineSymbol = function _getLineSymbol(props) {
+    BigLineRenderer.prototype._getLineSymbol = function _getLineSymbol(props) {
         var count = -1;
         for (var i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
             var style = this.layer._cookedStyles[i];
@@ -9891,10 +9839,27 @@ BigLineLayer.registerRenderer('webgl', function (_WebglRenderer) {
         return null;
     };
 
-    _class.prototype._drawLines = function _drawLines() {
+    BigLineRenderer.prototype._drawLines = function _drawLines() {
         var gl = this.gl,
             map = this.getMap(),
-            program = gl.program;
+            program = this._lineProgram;
+        this.useProgram(program);
+        this._checkSprites();
+        var data = this.layer.data;
+        if (!this._lineArrays) {
+            var painter = new LinePainter(gl, map),
+                symbol = void 0;
+            for (var i = 0, l = data.length; i < l; i++) {
+                symbol = this._getLineSymbol(data[i][1]);
+                painter.addLine(data[i][0], symbol);
+            }
+            // TODO 处理纹理坐标
+            var lineArrays = painter.getArrays();
+
+            this._bufferLineData(lineArrays);
+
+            this._elementCount = lineArrays.elementArray.length;
+        }
 
         var m = this.calcMatrices();
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
@@ -9908,25 +9873,102 @@ BigLineLayer.registerRenderer('webgl', function (_WebglRenderer) {
         if (this._sprites) {
             spriteSize = [this._sprites.canvas.width, this._sprites.canvas.height];
         }
-        console.log(spriteSize);
         gl.uniform2fv(program.u_spritesize, new Float32Array(spriteSize));
         gl.drawElements(gl.TRIANGLES, this._elementCount, gl.UNSIGNED_SHORT, 0);
     };
 
-    _class.prototype._registerEvents = function _registerEvents() {
+    BigLineRenderer.prototype._bufferLineData = function _bufferLineData(lineArrays) {
+        var gl = this.gl;
+        //buffer vertex data
+        var vertexBuffer = this.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        this.enableVertexAttrib(['a_pos', 2, 'FLOAT']);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.vertexArray), gl.STATIC_DRAW);
+
+        //buffer normal data
+        var normalBuffer = this.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+        this.enableVertexAttrib([['a_corner', 1, 'FLOAT'], ['a_linenormal', 2, 'FLOAT'], ['a_normal', 2, 'FLOAT'], ['a_linesofar', 1, 'FLOAT']]);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.normalArray), gl.STATIC_DRAW);
+
+        //texture coordinates
+        //将样式存入uniform变量
+        var texBuffer = this.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
+        this.enableVertexAttrib([['a_texcoord', 4, 'FLOAT'], ['a_opacity', 1, 'FLOAT'], ['a_linewidth', 1, 'FLOAT']]);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.styleArray), gl.STATIC_DRAW);
+
+        // release binded buffer
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        //buffer element data
+        var elementBuffer = this.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(lineArrays.elementArray), gl.STATIC_DRAW);
+    };
+
+    BigLineRenderer.prototype._registerEvents = function _registerEvents() {
         this.layer.on('setstyle', this._onStyleChanged, this);
     };
 
-    _class.prototype._removeEvents = function _removeEvents() {
+    BigLineRenderer.prototype._removeEvents = function _removeEvents() {
         this.layer.off('setstyle', this._onStyleChanged, this);
     };
 
-    _class.prototype._onStyleChanged = function _onStyleChanged() {
+    BigLineRenderer.prototype._onStyleChanged = function _onStyleChanged() {
         this._needCheckStyle = true;
     };
 
+    return BigLineRenderer;
+}(WebglRenderer);
+
+BigLineLayer.registerRenderer('webgl', BigLineRenderer);
+
+// import { vec2, mat2 } from 'gl-matrix';
+var options$3 = {
+    'blur': 2
+};
+
+var BigPolygonLayer = function (_BigDataLayer) {
+    inherits(BigPolygonLayer, _BigDataLayer);
+
+    function BigPolygonLayer() {
+        classCallCheck(this, BigPolygonLayer);
+        return possibleConstructorReturn(this, _BigDataLayer.apply(this, arguments));
+    }
+
+    return BigPolygonLayer;
+}(BigDataLayer);
+
+BigPolygonLayer.mergeOptions(options$3);
+
+BigPolygonLayer.registerJSONType('BigPolygonLayer');
+
+BigPolygonLayer.registerRenderer('webgl', function (_BigLineRenderer) {
+    inherits(_class, _BigLineRenderer);
+
+    function _class() {
+        classCallCheck(this, _class);
+        return possibleConstructorReturn(this, _BigLineRenderer.apply(this, arguments));
+    }
+
+    _class.prototype.draw = function draw() {
+        console.time('draw lines');
+        this.prepareCanvas();
+        this._drawPolygons();
+        this._drawLines();
+        console.timeEnd('draw lines');
+        this.completeRender();
+    };
+
+    _class.prototype._drawPolygons = function _drawPolygons() {};
+
+    _class.prototype.onRemove = function onRemove() {
+        _BigLineRenderer.prototype.onRemove.apply(this, arguments);
+    };
+
     return _class;
-}(WebglRenderer));
+}(BigLineRenderer));
 
 // export renderer and painters with package 'webgl'.
 
@@ -9934,6 +9976,7 @@ exports.webgl = index;
 exports.BigDataLayer = BigDataLayer;
 exports.BigPointLayer = BigPointLayer;
 exports.BigLineLayer = BigLineLayer;
+exports.BigPolygonLayer = BigPolygonLayer;
 
 Object.defineProperty(exports, '__esModule', { value: true });
 

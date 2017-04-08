@@ -25,7 +25,7 @@ BigLineLayer.registerJSONType('BigLineLayer');
     'lineDasharray' : [20, 10, 30, 20]
 };*/
 
-BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
+export class BigLineRenderer extends WebglRenderer {
 
     constructor(layer) {
         super(layer);
@@ -64,33 +64,12 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
 
     onCanvasCreate() {
         const uniforms = ['u_matrix', 'u_scale', 'u_spritesize', 'u_blur'];
-        const program = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
-        this.useProgram(program);
+        this._lineProgram = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
     }
 
     draw() {
         console.time('draw lines');
         this.prepareCanvas();
-        this._checkSprites();
-        const gl = this.gl,
-            map = this.getMap();
-        const data = this.layer.data;
-        if (!this._lineArrays) {
-            let painter = new LinePainter(gl, map),
-                symbol;
-            for (let i = 0, l = data.length; i < l; i++) {
-                symbol = this._getLineSymbol(data[i][1]);
-                painter.addLine(data[i][0], symbol);
-            }
-            // TODO 处理纹理坐标
-            let lineArrays = painter.getArrays();
-
-            this._bufferData(lineArrays);
-
-            this._elementCount = lineArrays.elementArray.length;
-
-            console.log('lineArrays', lineArrays);
-        }
 
         this._drawLines();
         console.timeEnd('draw lines');
@@ -102,47 +81,6 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
         delete this._sprites;
         delete this._lineArrays;
         super.onRemove.apply(this, arguments);
-    }
-
-    _bufferData(lineArrays) {
-        const gl = this.gl;
-        //buffer vertex data
-        const vertexBuffer = this.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-        this.enableVertexAttrib(
-            ['a_pos', 2, 'FLOAT']
-        );
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.vertexArray), gl.STATIC_DRAW);
-
-        //buffer normal data
-        const normalBuffer = this.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-        this.enableVertexAttrib([
-            ['a_corner', 1, 'FLOAT'],
-            ['a_linenormal', 2, 'FLOAT'],
-            ['a_normal', 2, 'FLOAT'],
-            ['a_linesofar', 1, 'FLOAT']
-        ]
-        );
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.normalArray), gl.STATIC_DRAW);
-
-        //texture coordinates
-        const texBuffer = this.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
-        this.enableVertexAttrib([
-            ['a_texcoord', 4, 'FLOAT'],
-            ['a_opacity', 1, 'FLOAT'],
-            ['a_linewidth', 1, 'FLOAT']
-        ]);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.styleArray), gl.STATIC_DRAW);
-
-        // release binded buffer
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-        //buffer element data
-        const elementBuffer = this.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(lineArrays.elementArray), gl.STATIC_DRAW);
     }
 
     _checkSprites() {
@@ -207,7 +145,24 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
     _drawLines() {
         const gl = this.gl,
             map = this.getMap(),
-            program = gl.program;
+            program = this._lineProgram;
+        this.useProgram(program);
+        this._checkSprites();
+        const data = this.layer.data;
+        if (!this._lineArrays) {
+            let painter = new LinePainter(gl, map),
+                symbol;
+            for (let i = 0, l = data.length; i < l; i++) {
+                symbol = this._getLineSymbol(data[i][1]);
+                painter.addLine(data[i][0], symbol);
+            }
+            // TODO 处理纹理坐标
+            let lineArrays = painter.getArrays();
+
+            this._bufferLineData(lineArrays);
+
+            this._elementCount = lineArrays.elementArray.length;
+        }
 
         const m = this.calcMatrices();
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
@@ -221,9 +176,50 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
         if (this._sprites) {
             spriteSize = [this._sprites.canvas.width, this._sprites.canvas.height];
         }
-        console.log(spriteSize);
         gl.uniform2fv(program.u_spritesize, new Float32Array(spriteSize));
         gl.drawElements(gl.TRIANGLES, this._elementCount, gl.UNSIGNED_SHORT, 0);
+    }
+
+    _bufferLineData(lineArrays) {
+        const gl = this.gl;
+        //buffer vertex data
+        const vertexBuffer = this.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        this.enableVertexAttrib(
+            ['a_pos', 2, 'FLOAT']
+        );
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.vertexArray), gl.STATIC_DRAW);
+
+        //buffer normal data
+        const normalBuffer = this.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+        this.enableVertexAttrib([
+            ['a_corner', 1, 'FLOAT'],
+            ['a_linenormal', 2, 'FLOAT'],
+            ['a_normal', 2, 'FLOAT'],
+            ['a_linesofar', 1, 'FLOAT']
+        ]
+        );
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.normalArray), gl.STATIC_DRAW);
+
+        //texture coordinates
+        //将样式存入uniform变量
+        const texBuffer = this.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
+        this.enableVertexAttrib([
+            ['a_texcoord', 4, 'FLOAT'],
+            ['a_opacity', 1, 'FLOAT'],
+            ['a_linewidth', 1, 'FLOAT']
+        ]);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArrays.styleArray), gl.STATIC_DRAW);
+
+        // release binded buffer
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        //buffer element data
+        const elementBuffer = this.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(lineArrays.elementArray), gl.STATIC_DRAW);
     }
 
     _registerEvents() {
@@ -237,5 +233,6 @@ BigLineLayer.registerRenderer('webgl', class extends WebglRenderer {
     _onStyleChanged() {
         this._needCheckStyle = true;
     }
-});
+}
 
+BigLineLayer.registerRenderer('webgl', BigLineRenderer);
