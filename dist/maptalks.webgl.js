@@ -6115,7 +6115,10 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
 
         var m = mat4.create();
         mat4.perspective(m, fov, size.width / size.height, 1, cameraToCenterDistance);
-        mat4.scale(m, m, [1, -1, 1]);
+        if (!maptalks.Util.isNode) {
+            // doesn't need to flip Y with headless-gl, unknown reason
+            mat4.scale(m, m, [1, -1, 1]);
+        }
         mat4.translate(m, m, [0, 0, -cameraToCenterDistance]);
         mat4.rotateX(m, m, map.getPitch() * Math.PI / 180);
         mat4.rotateZ(m, m, -map.getBearing() * Math.PI / 180);
@@ -9493,7 +9496,7 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
 
     _class.prototype.onCanvasCreate = function onCanvasCreate() {
         var gl = this.gl;
-        var uniforms = ['u_matrix', 'u_scale', 'u_sprite'];
+        var uniforms = ['u_matrix', 'u_scale', maptalks.Util.isNode ? 'u_sprite[0]' : 'u_sprite'];
         var program = this.createProgram(shaders.point.vertexSource, shaders.point.fragmentSource, uniforms);
         this.useProgram(program);
         var buffer = this.createBuffer();

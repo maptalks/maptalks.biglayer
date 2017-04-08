@@ -287,7 +287,10 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
 
         const m = mat4.create();
         mat4.perspective(m, fov, size.width / size.height, 1, cameraToCenterDistance);
-        mat4.scale(m, m, [1, -1, 1]);
+        if (!maptalks.Util.isNode) {
+            // doesn't need to flip Y with headless-gl, unknown reason
+            mat4.scale(m, m, [1, -1, 1]);
+        }
         mat4.translate(m, m, [0, 0, -cameraToCenterDistance]);
         mat4.rotateX(m, m, map.getPitch() * Math.PI / 180);
         mat4.rotateZ(m, m, -map.getBearing() * Math.PI / 180);

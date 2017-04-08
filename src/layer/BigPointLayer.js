@@ -48,7 +48,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
 
     onCanvasCreate() {
         const gl = this.gl;
-        const uniforms = ['u_matrix', 'u_scale', 'u_sprite'];
+        const uniforms = ['u_matrix', 'u_scale', maptalks.Util.isNode ? 'u_sprite[0]' : 'u_sprite'];
         const program = this.createProgram(shaders.point.vertexSource, shaders.point.fragmentSource, uniforms);
         this.useProgram(program);
         const buffer = this.createBuffer();
