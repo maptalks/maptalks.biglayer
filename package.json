@@ -24,7 +24,8 @@
     "eslint-config-maptalks": "^0.2.2",
     "gulp": "^3.9.0",
     "maptalks": "<2.0.0",
-    "maptalks-build-helpers": "^0.1.0"
+    "maptalks-build-helpers": "^0.1.0",
+    "rollup-watch": "^3.2.2"
   },
   "dependencies": {
     "color": "^0.11.3",
