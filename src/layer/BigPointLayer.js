@@ -42,7 +42,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
 
         this._needCheckStyle = false;
         this._needCheckSprites = true;
-
+        this._textureLoaded = false;
         return resources;
     }
 

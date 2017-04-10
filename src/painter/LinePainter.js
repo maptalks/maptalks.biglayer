@@ -1,6 +1,5 @@
 import * as maptalks from 'maptalks';
 import Painter from './Painter';
-import Color from 'color';
 import Point from 'point-geometry';
 
 const options = {
@@ -37,7 +36,6 @@ export default class LinePainter extends Painter {
         //-----------
 
         this.distance = 0;
-        this._colorMap = {};
     }
 
     /**
@@ -45,6 +43,10 @@ export default class LinePainter extends Painter {
      * @return {Object} 结果数组
      */
     getArrays() {
+        console.log('line.vertex', this.vertexArray.length);
+        console.log('line.normal', this.normalArray.length);
+        console.log('line.element', this.elementArray.length);
+        console.log('line.style', this.styleArray.length);
         return {
             'vertexArray'  : this.vertexArray,
             'normalArray'  : this.normalArray,
@@ -65,6 +67,9 @@ export default class LinePainter extends Painter {
      * @param {Object} style - 线的样式, maptalks.js的Symbol
      */
     addLine(line, style) {
+        if (!line) {
+            return this;
+        }
         if (style.symbol['lineWidth'] <= 0 || style.symbol['lineOpacity'] <= 0) {
             return this;
         }
@@ -108,7 +113,7 @@ export default class LinePainter extends Painter {
         // 新增的element数量
         const elementCount = this.elementArray.length - prevElementLen;
         // 添加样式数据
-        this._addTexCoords(elementCount * 4, style);
+        this._addTexCoords(elementCount, style);
         return this;
     }
 
@@ -239,7 +244,7 @@ export default class LinePainter extends Painter {
         // add to vertex array
         this.vertexArray.push(currentVertex.x, currentVertex.y);
         // joinNormal与线段normal的差值, joinNormal.x, joinNormal.y, normal.x, normal.y, linesofar
-        const normals = [this._precise(corner), this._precise(joinNormal.x), this._precise(joinNormal.y), this._precise(normal.x), this._precise(normal.y), linesofar];
+        const normals = [this._precise(corner), /*this._precise(joinNormal.x), this._precise(joinNormal.y), */this._precise(normal.x), this._precise(normal.y), linesofar];
         const n = this.normalArray.length / normals.length;
         Array.prototype.push.apply(this.normalArray, normals);
         return n;
@@ -270,25 +275,12 @@ export default class LinePainter extends Painter {
      * @param {Object} style - 线的样式
      */
     _addTexCoords(n, style) {
-        let color = style.symbol['lineColor'] || '#000000';
-        if (!this._colorMap[color]) {
-            this._colorMap[color] = Color(color).rgbaArrayNormalized();
-        }
-        color = this._colorMap[color];
+        // 线的透明度, 线宽的1/2(shader中都是用lineWidth的1/2做计算)
+        let v = (style.symbol['lineWidth'] || 2) / 2 * 100 + (style.symbol['lineOpacity'] || 1) * 10;
+        // (line_width * 100 + opacity * 10) * 10000 + tex_idx
+        v = v * 10000 + style.index;
         for (let i = 0; i < n; i++) {
-            if (style.texCoord) {
-                // 模式填充或有dasharray时, 添加三位纹理坐标
-                // 0: x坐标, 1: 纹理长度, 2: 纹理宽度
-                Array.prototype.push.apply(this.styleArray, style.texCoord);
-                // 3: -1, 表示样式为纹理
-                this.styleArray.push(-1);
-            } else {
-                // 线是简单的颜色填充
-                // 0: r, 1: g, 2: b, 3: a
-                Array.prototype.push.apply(this.styleArray, color);
-            }
-            // 线的透明度, 线宽的1/2(shader中都是用lineWidth的1/2做计算)
-            this.styleArray.push(style.symbol['lineOpacity'] || 1, (style.symbol['lineWidth'] || 2) / 2);
+            this.styleArray.push(v);
         }
     }
 

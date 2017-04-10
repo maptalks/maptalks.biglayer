@@ -1,6 +1,4 @@
-import { Browser } from 'maptalks';
-
-const count = (Browser.ie || Browser.edge) ? 504 : 3900;
+import { maxUniformLength } from './common';
 export default
 `
 // marker's 2d point at max zoom
@@ -14,7 +12,7 @@ uniform float u_scale;
 // a sprite has 6 integers:
 // 0 : northwest's x, 1 : width, 2: height, 3: sprite size, 4: offset x, 5: offset y
 // array's length is not dynamic, support maximum count / 6 sprites
-uniform float u_sprite[${count}];
+uniform float u_sprite[${maxUniformLength}];
 varying vec3 v_texCoord;
 void main() {
   int idx = int(a_sprite_idx);
