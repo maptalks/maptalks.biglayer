@@ -3,14 +3,13 @@ import Painter from './Painter';
 import Point from 'point-geometry';
 
 const options = {
-    'lineJoin' : 'miter', // bevel, round, miter
-    'lineCap' : 'butt', //butt, square, round
-    //输入数据为经纬度时, 转化为2d point
     'project' : true
 };
 
 /**
  * A Line Painter to produce vertex coordinates for WebGL shaders. <br>
+ *
+ * Line is triangled as in https://mattdesl.svbtle.com/drawing-lines-is-hard. <br>
  *
  * Inspired by maptalks-gl-js
  *    https://github.com/mapbox/mapbox-gl-js
@@ -43,10 +42,6 @@ export default class LinePainter extends Painter {
      * @return {Object} 结果数组
      */
     getArrays() {
-        console.log('line.vertex', this.vertexArray.length);
-        console.log('line.normal', this.normalArray.length);
-        console.log('line.element', this.elementArray.length);
-        console.log('line.style', this.styleArray.length);
         return {
             'vertexArray'  : this.vertexArray,
             'normalArray'  : this.normalArray,
@@ -138,15 +133,14 @@ export default class LinePainter extends Painter {
      */
     addCurrentVertex(currentVertex, nextVertex) {
         if (!this.preVertex) {
+            // 重置element数据处理的辅助变量
+            this.e1 = this.e2 = this.e3 = -1;
             // the first vertex.
             // 保存端点到preVertex中, 返回等待下一个端点数据
             this._waitForLeftCap = true;
             this.preVertex = currentVertex;
             return;
         }
-
-        // 重置element数据处理的辅助变量
-        this.e1 = this.e2 = this.e3 = -1;
 
         /*
          * normal为与线段行进方向逆时针垂直的normalized值
@@ -170,24 +164,21 @@ export default class LinePainter extends Painter {
             nextNormal = nextVertex.sub(currentVertex)._unit()._perp()._mult(-1);
         }
 
+        let preJoinNormal = this._getStartNormal(normal, this.preNormal);
+
         // 1. 计算线段左侧的joinNormal
         // 2. 添加线段左侧端点(e0, e1)到结果数组中
-        this._addLineEndVertexs(this.preVertex, this._getStartNormal(normal, this.preNormal), normal, this.distance);
-        if (this._waitForLeftCap) {
-            // TODO add left line cap
-            delete this._waitForLeftCap;
-        }
+        this._addLineEndVertexs(this.preVertex, preJoinNormal, this.distance);
 
         // 增加线段长度到linesofar中
         this.distance += currentVertex.dist(this.preVertex);
-        // 类似线段左侧端点的处理, 添加右侧端点(e2, e3)
-        let endNormal = this._getEndNormal(normal, nextNormal);
-        this._addLineEndVertexs(currentVertex, endNormal, normal, this.distance);
 
-        // 根据lineJoin设置, 将lineJoin分解为三角形并添加结果数组中
-        if (nextVertex) {
-            this._addJoin(currentVertex, endNormal, nextNormal);
+        if (!nextVertex) {
+            // 类似线段左侧端点的处理, 添加右侧端点(e2, e3)
+            let endNormal = this._getEndNormal(normal, nextNormal);
+            this._addLineEndVertexs(currentVertex, endNormal, this.distance);
         }
+
 
         this.preNormal = normal;
         this.preVertex = currentVertex;
@@ -210,12 +201,11 @@ export default class LinePainter extends Painter {
      * @param {Point} normal      - 线段的normal值
      * @param {Number} linesofar  - 当前线总长
      */
-    _addLineEndVertexs(vertex, joinNormal, normal, linesofar) {
-
+    _addLineEndVertexs(vertex, joinNormal, linesofar) {
         //up extrude joinNormal
         let extrude = joinNormal.normal[0];
 
-        this.e3 = this._addVertex(vertex, extrude, 0, normal, linesofar);
+        this.e3 = this._addVertex(vertex, extrude, linesofar);
         if (this.e1 >= 0 && this.e2 >= 0) {
             // add to element array
             this.elementArray.push(this.e1, this.e2, this.e3);
@@ -226,7 +216,7 @@ export default class LinePainter extends Painter {
         // down extrude joinNormal
         extrude = joinNormal.normal[1];
 
-        this.e3 = this._addVertex(vertex, extrude, joinNormal.corner, normal, linesofar);
+        this.e3 = this._addVertex(vertex, extrude, linesofar);
         if (this.e1 >= 0 && this.e2 >= 0) {
             // add to element array
             this.elementArray.push(this.e1, this.e2, this.e3);
@@ -240,23 +230,16 @@ export default class LinePainter extends Painter {
      * @param {Point} currentVertex     - current vertex
      * @param {Number} normal  - the normal of current line segment
      */
-    _addVertex(currentVertex, normal, corner, joinNormal, linesofar) {
+    _addVertex(currentVertex, normal, linesofar) {
         // add to vertex array
         this.vertexArray.push(currentVertex.x, currentVertex.y);
         // joinNormal与线段normal的差值, joinNormal.x, joinNormal.y, normal.x, normal.y, linesofar
-        const normals = [this._precise(corner), /*this._precise(joinNormal.x), this._precise(joinNormal.y), */this._precise(normal.x), this._precise(normal.y), linesofar];
+        const normals = [this._precise(normal.x), this._precise(normal.y), linesofar];
         const n = this.normalArray.length / normals.length;
         Array.prototype.push.apply(this.normalArray, normals);
         return n;
     }
 
-    /**
-     * Add line cap if the vertex is the first or the last vertex
-     * @param {Point} vertex     - vertex point
-     */
-    _addLineCap() {
-        //TODO
-    }
 
     _getVertice(line) {
         if (line.geometry) {
@@ -301,97 +284,20 @@ export default class LinePainter extends Painter {
     _getJoinNormal(currentNormal, preNormal, normal) {
         if (!preNormal || !normal) {
             return {
-                'normal' : [currentNormal, currentNormal.mult(-1)],
-                'corner' : 0,
-                'miterLength' : 0
+                'normal' : [currentNormal, currentNormal.mult(-1)]
             };
         }
         const joinNormal = preNormal.add(normal)._unit();
         const cosHalfAngle = joinNormal.x * normal.x + joinNormal.y * normal.y;
-        // if (this.options['lineJoin'] === 'miter') {
         const miterLength = 1 / cosHalfAngle;
-        let resultNormal, upSharp;
-        // 线段上垂线与上条线段下垂线的夹角小于180度
-        if (normal.angleWith(preNormal.mult(-1)) > 0) {
-            //上端是锐角
-            resultNormal = [currentNormal, joinNormal._mult(miterLength).mult(-1)];
-            upSharp = false;
-        } else {
-            //下端是锐角
-            resultNormal = [joinNormal._mult(miterLength), currentNormal.mult(-1)];
-            upSharp = true;
-        }
+        joinNormal._mult(miterLength);
         return {
-            'normal' : resultNormal,
-            'upSharp' : upSharp,
-            //miterLength * sin(angle)
-            'corner' : -miterLength * Math.sqrt(1 - cosHalfAngle * cosHalfAngle),
-            'miterLength' : miterLength
+            'normal' : [joinNormal, joinNormal.mult(-1)]
         };
-        // }
     }
 
     _precise(f) {
         return Math.round(f * 1E7) / 1E7;
-    }
-
-    /**
-     * 参考资料:
-     * http://labs.hyperandroid.com/efficient-webgl-stroking
-     *
-     * 将lineJoin分解成三角形, 并添加到结果数组中
-     * @param {Point} vertex        join所在的端点
-     * @param {Point} preJoinNormal 当前的join normal
-     * @param {Point} nextNormal    下一条线段的normal
-     */
-    _addJoin(vertex, preJoinNormal, nextNormal) {
-        //TODO 计算join三角形各个端点的corner值
-        //bevel join triangle
-        const normal = new Point(0, 0);
-        /*            preJoinNormal
-         *                ↑
-         *                .________. prevVertex
-         *                |
-         * nextNormal  ←  |  vertex
-         *                |
-         *     nextVertex !
-         *
-         */
-        let e1, e2, e3;
-        //添加bevel三角形, 该三角形是miter, bevel, round类型都要添加的
-        e1 = this._addVertex(vertex, preJoinNormal.normal[0], 0, normal, false, this.distance);
-        e2 = this._addVertex(vertex, preJoinNormal.normal[1], 0, normal, false, this.distance);
-        if (preJoinNormal.upSharp) {
-            // 如果线段上端夹角(行进方向)为锐角, 则bevel三角形在线段下端, 三个端点由joinNormal的两个端点, nextNormal的下端点组成
-            e3 = this._addVertex(vertex, nextNormal.mult(-1), 0, normal, false, this.distance);
-        } else {
-            // 如果线段上端夹角(行进方向)为锐角, 则bevel三角形在线段上端, 三个端点由joinNormal的两个端点, nextNormal的上端点组成
-            e3 = this._addVertex(vertex, nextNormal, 0, normal, false, this.distance);
-        }
-        this.elementArray.push(e1, e2, e3);
-
-
-        const currentJoin = this.options['lineJoin'];
-
-        // 判断miter是否超过miterlimit, 如果超过, 则转为bevel
-
-        if (currentJoin === 'miter') {
-            // 添加miter夹角, 同bevel三角形, 根据锐角在上端还是下端分开处理
-            if (preJoinNormal.upSharp) {
-                e1 = this._addVertex(vertex, preJoinNormal.normal[1], 0, normal, false, this.distance);
-                e2 = this._addVertex(vertex, preJoinNormal.normal[0].mult(-1), 0, normal, false, this.distance);
-                e3 = this._addVertex(vertex, nextNormal.mult(-1), 0, normal, false, this.distance);
-            } else {
-                e1 = this._addVertex(vertex, preJoinNormal.normal[1].mult(-1), 0, normal, false, this.distance);
-                e2 = this._addVertex(vertex, preJoinNormal.normal[0], 0, normal, false, this.distance);
-                e3 = this._addVertex(vertex, nextNormal, 0, normal, false, this.distance);
-            }
-
-            this.elementArray.push(e1, e2, e3);
-        } else if (currentJoin === 'round') {
-            //TODO 实现round类型的linejoin
-        }
-
     }
 }
 

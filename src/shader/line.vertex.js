@@ -9,7 +9,6 @@ precision highp float;
 #endif
 
 attribute vec4 a_pos;
-attribute mediump float a_corner;
 attribute mediump vec2 a_normal;
 // attribute mediump vec2 a_linenormal;
 attribute float a_linesofar;
@@ -49,12 +48,8 @@ void main() {
     pos.x += a_normal.x * v_linewidth * u_scale;
     pos.y += a_normal.y * v_linewidth * u_scale;
 
-    float corner = a_corner * v_linewidth * u_scale;
-    // float direction = mod(a_seglen, 2.0) - 0.5;
-    // v_ruler = corner / (a_seglen / 2.0) + sign(direction);
-
     // add linesofar with corner length caused by line-join
-    v_linesofar = a_linesofar + corner;
+    v_linesofar = a_linesofar;
 
 
     gl_Position = u_matrix * pos;

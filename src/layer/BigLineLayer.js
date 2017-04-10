@@ -36,7 +36,7 @@ export class BigLineRenderer extends WebglRenderer {
 
     checkResources() {
         if (!this._needCheckStyle) {
-            return null;
+            return [];
         }
 
         const resources = [];
@@ -58,7 +58,7 @@ export class BigLineRenderer extends WebglRenderer {
         this._textureLoaded = false;
 
         if (resources.length === 0) {
-            return null;
+            return [];
         }
 
         return resources;
@@ -210,6 +210,8 @@ export class BigLineRenderer extends WebglRenderer {
         }
         gl.uniform2fv(program.u_tex_size, new Float32Array(texSize));
         gl.drawElements(gl.TRIANGLES, this._elementCount, gl.UNSIGNED_INT, 0);
+        //release element buffer
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
     }
 
     _bufferLineData(lineArrays) {
@@ -226,7 +228,6 @@ export class BigLineRenderer extends WebglRenderer {
             ['a_pos', 2, 'FLOAT']
         );
 
-        //buffer normal data
         if (!this._normalBuffer) {
             //buffer normal data
             const normalBuffer = this._normalBuffer = this.createBuffer();
@@ -236,12 +237,9 @@ export class BigLineRenderer extends WebglRenderer {
             gl.bindBuffer(gl.ARRAY_BUFFER, this._normalBuffer);
         }
         this.enableVertexAttrib([
-            ['a_corner', 1, 'FLOAT'],
-            // ['a_linenormal', 2, 'FLOAT'],
             ['a_normal', 2, 'FLOAT'],
             ['a_linesofar', 1, 'FLOAT']
-        ]
-        );
+        ]);
 
         if (!this._texBuffer) {
             //texture coordinates
@@ -266,6 +264,9 @@ export class BigLineRenderer extends WebglRenderer {
         } else {
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._elementBuffer);
         }
+
+
+        // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
     }
 
     _registerEvents() {

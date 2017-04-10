@@ -4263,8 +4263,6 @@ Point$1.convert = function (a) {
 };
 
 var options = {
-    'lineJoin': 'miter',
-    'lineCap': 'butt',
     'project': true
 };
 
@@ -4287,10 +4285,6 @@ var LinePainter = function (_Painter) {
     }
 
     LinePainter.prototype.getArrays = function getArrays() {
-        console.log('line.vertex', this.vertexArray.length);
-        console.log('line.normal', this.normalArray.length);
-        console.log('line.element', this.elementArray.length);
-        console.log('line.style', this.styleArray.length);
         return {
             'vertexArray': this.vertexArray,
             'normalArray': this.normalArray,
@@ -4350,12 +4344,12 @@ var LinePainter = function (_Painter) {
 
     LinePainter.prototype.addCurrentVertex = function addCurrentVertex(currentVertex, nextVertex) {
         if (!this.preVertex) {
+            this.e1 = this.e2 = this.e3 = -1;
+
             this._waitForLeftCap = true;
             this.preVertex = currentVertex;
             return;
         }
-
-        this.e1 = this.e2 = this.e3 = -1;
 
         var normal = currentVertex.sub(this.preVertex)._unit()._perp()._mult(-1);
 
@@ -4364,18 +4358,15 @@ var LinePainter = function (_Painter) {
             nextNormal = nextVertex.sub(currentVertex)._unit()._perp()._mult(-1);
         }
 
-        this._addLineEndVertexs(this.preVertex, this._getStartNormal(normal, this.preNormal), normal, this.distance);
-        if (this._waitForLeftCap) {
-            delete this._waitForLeftCap;
-        }
+        var preJoinNormal = this._getStartNormal(normal, this.preNormal);
+
+        this._addLineEndVertexs(this.preVertex, preJoinNormal, this.distance);
 
         this.distance += currentVertex.dist(this.preVertex);
 
-        var endNormal = this._getEndNormal(normal, nextNormal);
-        this._addLineEndVertexs(currentVertex, endNormal, normal, this.distance);
-
-        if (nextVertex) {
-            this._addJoin(currentVertex, endNormal, nextNormal);
+        if (!nextVertex) {
+            var endNormal = this._getEndNormal(normal, nextNormal);
+            this._addLineEndVertexs(currentVertex, endNormal, this.distance);
         }
 
         this.preNormal = normal;
@@ -4389,10 +4380,10 @@ var LinePainter = function (_Painter) {
         delete this.preNormal;
     };
 
-    LinePainter.prototype._addLineEndVertexs = function _addLineEndVertexs(vertex, joinNormal, normal, linesofar) {
+    LinePainter.prototype._addLineEndVertexs = function _addLineEndVertexs(vertex, joinNormal, linesofar) {
         var extrude = joinNormal.normal[0];
 
-        this.e3 = this._addVertex(vertex, extrude, 0, normal, linesofar);
+        this.e3 = this._addVertex(vertex, extrude, linesofar);
         if (this.e1 >= 0 && this.e2 >= 0) {
             this.elementArray.push(this.e1, this.e2, this.e3);
         }
@@ -4401,7 +4392,7 @@ var LinePainter = function (_Painter) {
 
         extrude = joinNormal.normal[1];
 
-        this.e3 = this._addVertex(vertex, extrude, joinNormal.corner, normal, linesofar);
+        this.e3 = this._addVertex(vertex, extrude, linesofar);
         if (this.e1 >= 0 && this.e2 >= 0) {
             this.elementArray.push(this.e1, this.e2, this.e3);
         }
@@ -4409,16 +4400,14 @@ var LinePainter = function (_Painter) {
         this.e2 = this.e3;
     };
 
-    LinePainter.prototype._addVertex = function _addVertex(currentVertex, normal, corner, joinNormal, linesofar) {
+    LinePainter.prototype._addVertex = function _addVertex(currentVertex, normal, linesofar) {
         this.vertexArray.push(currentVertex.x, currentVertex.y);
 
-        var normals = [this._precise(corner), this._precise(normal.x), this._precise(normal.y), linesofar];
+        var normals = [this._precise(normal.x), this._precise(normal.y), linesofar];
         var n = this.normalArray.length / normals.length;
         Array.prototype.push.apply(this.normalArray, normals);
         return n;
     };
-
-    LinePainter.prototype._addLineCap = function _addLineCap() {};
 
     LinePainter.prototype._getVertice = function _getVertice(line) {
         if (line.geometry) {
@@ -4449,69 +4438,20 @@ var LinePainter = function (_Painter) {
     LinePainter.prototype._getJoinNormal = function _getJoinNormal(currentNormal, preNormal, normal) {
         if (!preNormal || !normal) {
             return {
-                'normal': [currentNormal, currentNormal.mult(-1)],
-                'corner': 0,
-                'miterLength': 0
+                'normal': [currentNormal, currentNormal.mult(-1)]
             };
         }
         var joinNormal = preNormal.add(normal)._unit();
         var cosHalfAngle = joinNormal.x * normal.x + joinNormal.y * normal.y;
-
         var miterLength = 1 / cosHalfAngle;
-        var resultNormal = void 0,
-            upSharp = void 0;
-
-        if (normal.angleWith(preNormal.mult(-1)) > 0) {
-            resultNormal = [currentNormal, joinNormal._mult(miterLength).mult(-1)];
-            upSharp = false;
-        } else {
-            resultNormal = [joinNormal._mult(miterLength), currentNormal.mult(-1)];
-            upSharp = true;
-        }
+        joinNormal._mult(miterLength);
         return {
-            'normal': resultNormal,
-            'upSharp': upSharp,
-
-            'corner': -miterLength * Math.sqrt(1 - cosHalfAngle * cosHalfAngle),
-            'miterLength': miterLength
+            'normal': [joinNormal, joinNormal.mult(-1)]
         };
     };
 
     LinePainter.prototype._precise = function _precise(f) {
         return Math.round(f * 1E7) / 1E7;
-    };
-
-    LinePainter.prototype._addJoin = function _addJoin(vertex, preJoinNormal, nextNormal) {
-        var normal = new index$1(0, 0);
-
-        var e1 = void 0,
-            e2 = void 0,
-            e3 = void 0;
-
-        e1 = this._addVertex(vertex, preJoinNormal.normal[0], 0, normal, false, this.distance);
-        e2 = this._addVertex(vertex, preJoinNormal.normal[1], 0, normal, false, this.distance);
-        if (preJoinNormal.upSharp) {
-            e3 = this._addVertex(vertex, nextNormal.mult(-1), 0, normal, false, this.distance);
-        } else {
-            e3 = this._addVertex(vertex, nextNormal, 0, normal, false, this.distance);
-        }
-        this.elementArray.push(e1, e2, e3);
-
-        var currentJoin = this.options['lineJoin'];
-
-        if (currentJoin === 'miter') {
-            if (preJoinNormal.upSharp) {
-                e1 = this._addVertex(vertex, preJoinNormal.normal[1], 0, normal, false, this.distance);
-                e2 = this._addVertex(vertex, preJoinNormal.normal[0].mult(-1), 0, normal, false, this.distance);
-                e3 = this._addVertex(vertex, nextNormal.mult(-1), 0, normal, false, this.distance);
-            } else {
-                e1 = this._addVertex(vertex, preJoinNormal.normal[1].mult(-1), 0, normal, false, this.distance);
-                e2 = this._addVertex(vertex, preJoinNormal.normal[0], 0, normal, false, this.distance);
-                e3 = this._addVertex(vertex, nextNormal, 0, normal, false, this.distance);
-            }
-
-            this.elementArray.push(e1, e2, e3);
-        } else if (currentJoin === 'round') {}
     };
 
     return LinePainter;
@@ -5208,11 +5148,11 @@ var PolygonPainter = function (_Painter) {
 
 PolygonPainter.mergeOptions(options$1);
 
-var lineFragment = "#ifdef GL_ES\nprecision mediump float;\n#else\n#define lowp\n#define mediump\n#define highp\n#endif\n\nuniform float u_blur;\nuniform vec2 u_tex_size;\n\n// varying lowp vec4 v_color;\n// varying vec2 v_linenormal;\nvarying vec4 v_texcoord;\nvarying float v_opacity;\nvarying float v_linewidth;\nvarying float v_scale;\nvarying float v_texture_normal;\nvarying float v_linesofar;\n// varying float v_ruler;\n\nuniform sampler2D u_image;\n\nvoid main() {\n\n    // Calculate the distance of the pixel from the line in pixels.\n    // float dist = length(v_linenormal.xy) * v_linewidth;\n\n    // Calculate the antialiasing fade factor. This is either when fading in\n    // the line in case of an offset line (v_linewidth.t) or when fading out\n    // (v_linewidth.s)\n    // float blur = u_blur;\n    // float alpha = clamp((v_linewidth - dist) / blur, 0.0, 1.0);\n    // alpha = 1.0;\n    vec4 color;\n    if (v_texcoord.q == -1.0) {\n        // is a texture fragment\n        float linesofar = v_linesofar / v_scale;\n        float texWidth = u_tex_size.x * v_texcoord.t;\n        float x = v_texcoord.s + mod(linesofar, texWidth) / texWidth * v_texcoord.t;\n        float y = (v_texture_normal + 1.0) / 2.0 * v_texcoord.p;\n\n        color = texture2D(u_image, vec2(x, y));\n        // if (abs(v_ruler) > 1.0) {\n        //     color = vec4(1.0);\n        // }\n    } else {\n        // a color fragment\n        color = v_texcoord;\n    }\n    float alpha = 1.0;\n    gl_FragColor = color * (alpha * v_opacity);\n#ifdef OVERDRAW_INSPECTOR\n    gl_FragColor = vec4(1.0);\n#endif\n}";
+var lineFragment = "#ifdef GL_ES\nprecision mediump float;\n#else\n#define lowp\n#define mediump\n#define highp\n#endif\n\nuniform float u_blur;\nuniform vec2 u_tex_size;\n\n// varying lowp vec4 v_color;\n// varying vec2 v_linenormal;\nvarying vec4 v_texcoord;\nvarying float v_opacity;\nvarying float v_linewidth;\nvarying float v_scale;\nvarying float v_texture_normal;\nvarying float v_linesofar;\n// varying float v_ruler;\n\nuniform sampler2D u_image;\n\nvoid main() {\n    vec4 color;\n    if (v_texcoord.q == -1.0) {\n        // is a texture fragment\n        float linesofar = v_linesofar / v_scale;\n        float texWidth = u_tex_size.x * v_texcoord.t;\n        float x = v_texcoord.s + mod(linesofar, texWidth) / texWidth * v_texcoord.t;\n        float y = (v_texture_normal + 1.0) / 2.0 * v_texcoord.p;\n\n        color = texture2D(u_image, vec2(x, y));\n    } else {\n        // a color fragment\n        color = v_texcoord;\n    }\n    float alpha = 1.0;\n    gl_FragColor = color * (alpha * v_opacity);\n#ifdef OVERDRAW_INSPECTOR\n    gl_FragColor = vec4(1.0);\n#endif\n}";
 
 var maxUniformLength = maptalks.Browser.ie || maptalks.Browser.edge ? 504 : maptalks.Util.isNode ? 1014 : 3900;
 
-var lineVertex = '#ifdef GL_ES\nprecision highp float;\n#else\n#define lowp\n#define mediump\n#define highp\n#endif\n\nattribute vec4 a_pos;\nattribute mediump float a_corner;\nattribute mediump vec2 a_normal;\n// attribute mediump vec2 a_linenormal;\nattribute float a_linesofar;\n// (line_width * 100 + opacity * 10) * 10000 + tex_idx\nattribute float a_style;\n// attribute float a_seglen;\n\nuniform mat4 u_matrix;\nuniform float u_scale;\nuniform float u_styles[' + maxUniformLength + '];\n\nvarying vec2 v_linenormal;\nvarying float v_linewidth;\nvarying float v_opacity;\nvarying vec4 v_texcoord;\nvarying float v_scale;\nvarying float v_texture_normal;\n\nvarying float v_linesofar;\n// varying float v_ruler;\n\nvoid main() {\n    int tex_idx = int(mod(a_style, 10000.0));\n    float s = floor(a_style / 10000.0);\n    v_opacity = mod(s, 10.0) / 10.0;\n    if (v_opacity == 0.0) {\n        v_opacity = 1.0;\n    }\n    v_linewidth = s / 100.0;\n    v_texcoord = vec4(u_styles[tex_idx], u_styles[tex_idx + 1], u_styles[tex_idx + 2], u_styles[tex_idx + 3]);\n\n    v_scale = u_scale;\n\n    // v_linenormal = a_linenormal;\n\n    vec4 pos = a_pos;\n    pos.x += a_normal.x * v_linewidth * u_scale;\n    pos.y += a_normal.y * v_linewidth * u_scale;\n\n    float corner = a_corner * v_linewidth * u_scale;\n    // float direction = mod(a_seglen, 2.0) - 0.5;\n    // v_ruler = corner / (a_seglen / 2.0) + sign(direction);\n\n    // add linesofar with corner length caused by line-join\n    v_linesofar = a_linesofar + corner;\n\n\n    gl_Position = u_matrix * pos;\n    if (a_normal.y == 0.0) {\n        // with an upside down straight line, a_normal.y is always 0, use a_normal.x instead\n        v_texture_normal = -sign(a_normal.x);\n    } else {\n        //\n        v_texture_normal = sign(a_normal.y);\n    }\n\n}';
+var lineVertex = '#ifdef GL_ES\nprecision highp float;\n#else\n#define lowp\n#define mediump\n#define highp\n#endif\n\nattribute vec4 a_pos;\nattribute mediump vec2 a_normal;\n// attribute mediump vec2 a_linenormal;\nattribute float a_linesofar;\n// (line_width * 100 + opacity * 10) * 10000 + tex_idx\nattribute float a_style;\n// attribute float a_seglen;\n\nuniform mat4 u_matrix;\nuniform float u_scale;\nuniform float u_styles[' + maxUniformLength + '];\n\nvarying vec2 v_linenormal;\nvarying float v_linewidth;\nvarying float v_opacity;\nvarying vec4 v_texcoord;\nvarying float v_scale;\nvarying float v_texture_normal;\n\nvarying float v_linesofar;\n// varying float v_ruler;\n\nvoid main() {\n    int tex_idx = int(mod(a_style, 10000.0));\n    float s = floor(a_style / 10000.0);\n    v_opacity = mod(s, 10.0) / 10.0;\n    if (v_opacity == 0.0) {\n        v_opacity = 1.0;\n    }\n    v_linewidth = s / 100.0;\n    v_texcoord = vec4(u_styles[tex_idx], u_styles[tex_idx + 1], u_styles[tex_idx + 2], u_styles[tex_idx + 3]);\n\n    v_scale = u_scale;\n\n    // v_linenormal = a_linenormal;\n\n    vec4 pos = a_pos;\n    pos.x += a_normal.x * v_linewidth * u_scale;\n    pos.y += a_normal.y * v_linewidth * u_scale;\n\n    // add linesofar with corner length caused by line-join\n    v_linesofar = a_linesofar;\n\n\n    gl_Position = u_matrix * pos;\n    if (a_normal.y == 0.0) {\n        // with an upside down straight line, a_normal.y is always 0, use a_normal.x instead\n        v_texture_normal = -sign(a_normal.x);\n    } else {\n        //\n        v_texture_normal = sign(a_normal.y);\n    }\n\n}';
 
 var pointFragment = "\nprecision mediump float;\nuniform sampler2D u_sampler;\nvarying vec3 v_texCoord;\nvoid main() {\n    gl_FragColor = texture2D(u_sampler, vec2(v_texCoord[0] + gl_PointCoord[0] * v_texCoord[1], 1.0 + gl_PointCoord[1] * v_texCoord[2]));\n}";
 
@@ -7707,7 +7647,7 @@ var BigLineRenderer = function (_WebglRenderer) {
 
     BigLineRenderer.prototype.checkResources = function checkResources() {
         if (!this._needCheckStyle) {
-            return null;
+            return [];
         }
 
         var resources = [];
@@ -7728,7 +7668,7 @@ var BigLineRenderer = function (_WebglRenderer) {
         this._textureLoaded = false;
 
         if (resources.length === 0) {
-            return null;
+            return [];
         }
 
         return resources;
@@ -7870,6 +7810,8 @@ var BigLineRenderer = function (_WebglRenderer) {
         }
         gl.uniform2fv(program.u_tex_size, new Float32Array(texSize));
         gl.drawElements(gl.TRIANGLES, this._elementCount, gl.UNSIGNED_INT, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
     };
 
     BigLineRenderer.prototype._bufferLineData = function _bufferLineData(lineArrays) {
@@ -7891,7 +7833,7 @@ var BigLineRenderer = function (_WebglRenderer) {
         } else {
             gl.bindBuffer(gl.ARRAY_BUFFER, this._normalBuffer);
         }
-        this.enableVertexAttrib([['a_corner', 1, 'FLOAT'], ['a_normal', 2, 'FLOAT'], ['a_linesofar', 1, 'FLOAT']]);
+        this.enableVertexAttrib([['a_normal', 2, 'FLOAT'], ['a_linesofar', 1, 'FLOAT']]);
 
         if (!this._texBuffer) {
             var texBuffer = this._texBuffer = this.createBuffer();

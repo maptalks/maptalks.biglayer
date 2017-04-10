@@ -23,16 +23,6 @@ varying float v_linesofar;
 uniform sampler2D u_image;
 
 void main() {
-
-    // Calculate the distance of the pixel from the line in pixels.
-    // float dist = length(v_linenormal.xy) * v_linewidth;
-
-    // Calculate the antialiasing fade factor. This is either when fading in
-    // the line in case of an offset line (v_linewidth.t) or when fading out
-    // (v_linewidth.s)
-    // float blur = u_blur;
-    // float alpha = clamp((v_linewidth - dist) / blur, 0.0, 1.0);
-    // alpha = 1.0;
     vec4 color;
     if (v_texcoord.q == -1.0) {
         // is a texture fragment
@@ -42,9 +32,6 @@ void main() {
         float y = (v_texture_normal + 1.0) / 2.0 * v_texcoord.p;
 
         color = texture2D(u_image, vec2(x, y));
-        // if (abs(v_ruler) > 1.0) {
-        //     color = vec4(1.0);
-        // }
     } else {
         // a color fragment
         color = v_texcoord;
