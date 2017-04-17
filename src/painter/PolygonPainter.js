@@ -101,8 +101,15 @@ export default class PolygonPainter extends Painter {
         if (count > 0) {
             triangles = triangles.map(e => e + count);
         }
-        this.vertexArray.push(data.vertices);
-        this.elementArray.push(triangles);
+
+        for (let i = 0; i < data.vertices.length; i++) {
+            const vertex = this.vertexArray[i];
+            this.vertexArray.push(vertex);
+        }
+        for (let i = 0; i < triangles.length; i++) {
+            const element = triangles[i];
+            this.elementArray.push(element);
+        }
 
         // 添加样式数据
         this._addTexCoords(triangles.length, style);
