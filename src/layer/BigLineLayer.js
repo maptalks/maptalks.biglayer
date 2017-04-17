@@ -2,7 +2,7 @@ import shaders from '../shader/Shader';
 import LinePainter from '../painter/LinePainter';
 import BigDataLayer from './BigDataLayer';
 import PathRenderer from './renderer/PathRenderer';
-import { getTargetZoom } from './Painter';
+import { getTargetZoom } from '../painter/Painter';
 
 const options = {
     'blur' : 2
@@ -57,7 +57,7 @@ export class BigLineRenderer extends PathRenderer {
         this.useProgram(program);
         this._checkSprites();
 
-        this._prepareData();
+        this._prepareLineData();
         this._bufferLineData(this._lineArrays);
 
         const m = this.calcMatrices();
@@ -79,7 +79,7 @@ export class BigLineRenderer extends PathRenderer {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
     }
 
-    _prepareData() {
+    _prepareLineData() {
         if (this._lineArrays) {
             return;
         }

@@ -44,7 +44,7 @@ BigPolygonLayer.registerRenderer('webgl', class extends BigLineRenderer {
         this.useProgram(program);
         this._checkSprites();
 
-        this._prepareData();
+        this._preparePolygonData();
 
         this._bufferPolygonData(this._polygonArrays);
 
@@ -56,7 +56,7 @@ BigPolygonLayer.registerRenderer('webgl', class extends BigLineRenderer {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
     }
 
-    _prepareData() {
+    _preparePolygonData() {
         if (this._polygonArrays) {
             return;
         }
@@ -64,8 +64,8 @@ BigPolygonLayer.registerRenderer('webgl', class extends BigLineRenderer {
             map = this.getMap();
 
         const data = this.layer.data;
-        let painter = new PolygonPainter(gl, map),
-            symbol;
+        const painter = new PolygonPainter(gl, map);
+        let symbol;
         for (let i = 0, l = data.length; i < l; i++) {
             if (Array.isArray(data[i])) {
                 symbol = this.getDataSymbol(data[i][1]);
@@ -77,7 +77,7 @@ BigPolygonLayer.registerRenderer('webgl', class extends BigLineRenderer {
             }
 
         }
-        let polygonArrays = this._polygonArrays = painter.getArrays();
+        const polygonArrays = this._polygonArrays = painter.getArrays();
         this._polygonElementCount = polygonArrays.elementArray.length;
     }
 

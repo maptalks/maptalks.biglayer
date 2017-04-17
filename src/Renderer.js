@@ -1,6 +1,6 @@
 import * as maptalks from 'maptalks';
 import { mat4 } from 'gl-matrix';
-import { getTargetZoom } from '../painter/Painter';
+import { getTargetZoom } from './painter/Painter';
 
 const RADIAN = Math.PI / 180;
 
@@ -324,9 +324,6 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         mat4.copy(m1, m);
         const m2 = this._getLookAtMat();
         mat4.multiply(m, m1, m2);
-        console.log(m1.join());
-        console.log(m.join());
-        // console.log(this._calcMatrices().join());
         return m;
     }
 
