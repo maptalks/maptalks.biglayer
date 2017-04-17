@@ -16,11 +16,11 @@ export default class LineAtlas {
         this.atlas = {};
     }
 
-    getAtlas(symbol, round) {
-        const key = JSON.stringify(symbol) + '_' + round;
+    getAtlas(symbol) {
+        const key = JSON.stringify(symbol);
 
         if (!this.atlas[key]) {
-            let atlas = this.addAtlas(symbol, round);
+            let atlas = this.addAtlas(symbol);
             if (atlas) {
                 this.atlas[key] = atlas;
             }
@@ -28,12 +28,12 @@ export default class LineAtlas {
         return this.atlas[key];
     }
 
-    addAtlas(symbol, round) {
+    addAtlas(symbol) {
         if (!symbol['lineDasharray'] && !symbol['linePatternFile']) {
             return null;
         }
 
-        const size = this._getSize(symbol, round, this.resources);
+        const size = this._getSize(symbol, this.resources);
 
         const canvas = this._createCanvas(size);
 
@@ -59,7 +59,7 @@ export default class LineAtlas {
      * @param  {Object} symbol - atlas's symbol
      * @return {Number[]}        size : [width, height]
      */
-    _getSize(symbol, round, resources) {
+    _getSize(symbol, resources) {
         let w = 0, h = 0;
         const dashArray = symbol['lineDasharray'];
         if (dashArray) {

@@ -12,6 +12,7 @@
   },
   "rules": {
     "strict": 0,
-    "no-var": "error"
+    "no-var": "error",
+    "prefer-const": "error"
   }
 }

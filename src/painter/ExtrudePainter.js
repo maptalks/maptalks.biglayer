@@ -1,6 +1,7 @@
 import * as maptalks from 'maptalks';
 import Painter from './Painter';
 import earcut from 'earcut';
+import Point from 'point-geometry';
 import { getTargetZoom } from './Painter';
 
 const options = {
@@ -14,12 +15,13 @@ const options = {
  * @author fuzhenn
  * @class
  */
-export default class PolygonPainter extends Painter {
+export default class ExtrudePainter extends Painter {
     constructor(gl, map, options) {
         super(gl, map, options);
         // 结果数组
         //-----------
         this.vertexArray = [];
+        this.normalArray = [];
         this.elementArray = [];
         this.styleArray = [];
     }
@@ -31,6 +33,7 @@ export default class PolygonPainter extends Painter {
     getArrays() {
         return {
             'vertexArray'  : this.vertexArray,
+            'normalArray' : this.normalArray,
             'elementArray' : this.elementArray,
             'styleArray'   : this.styleArray
         };
@@ -47,7 +50,7 @@ export default class PolygonPainter extends Painter {
      * @param {Number[][]|Number[][][]} polygon - 多边形坐标数组
      * @param {Object} style - 多边形的样式, maptalks.js的Symbol
      */
-    addPolygon(polygon, style) {
+    addPolygon(polygon, height, style) {
         if (!polygon) {
             return this;
         }
@@ -64,47 +67,98 @@ export default class PolygonPainter extends Painter {
             }
             return this;
         }
-        vertice.forEach(ring => {
-            if (!ring.length) {
-                return;
-            }
-            if (!this._equalCoord(ring[0], ring[ring.length - 1])) {
-                ring.push(ring[0], ring[1]);
-            }
-        });
+
+        this._fillArrays(vertice, height, style);
+        return this;
+    }
+
+    _fillArrays(vertice, height, style) {
+        const dimension = 3;
+
         const targetZ = getTargetZoom(this.map);
         const data = earcut.flatten(vertice);
 
-        if (this.options['project']) {
-            const v = [];
-            let c;
-            for (let i = 0, l = data.vertices.length; i < l; i += 2) {
-                c = this.map.coordinateToPoint(new maptalks.Coordinate(data.vertices[i], data.vertices[i + 1]), targetZ);
-                v.push(c.x, c.y);
+        const bottom = [];
+        const top = [];
+        let c;
+        //push 3d points
+        for (let i = 0, l = data.vertices.length; i < l; i += 2) {
+            if (i === l - 1) {
+                if (this._equalCoord(data.vertices[i], data.vertices[0])) {
+                    continue;
+                }
             }
-            data.vertices = v;
+            if (this.options['project']) {
+                c = this.map.coordinateToPoint(new maptalks.Coordinate(data.vertices[i], data.vertices[i + 1]), targetZ);
+                bottom.push(c.x, c.y, 0);
+                top.push(c.x, c.y, height);
+            } else {
+                bottom.push(data.vertices[i], data.vertices[i + 1], 0);
+                top.push(data.vertices[i], data.vertices[i + 1], height);
+            }
         }
-        let triangles = earcut(data.vertices, data.holes, 2);
+        data.vertices = bottom;
+        let triangles = earcut(data.vertices, data.holes, dimension);
         if (triangles.length <= 2) {
-            return this;
+            return;
         }
-        const deviation = earcut.deviation(data.vertices, data.holes, 2, triangles);
+        const deviation = earcut.deviation(data.vertices, data.holes, dimension, triangles);
         if (Math.round(deviation * 1E3) / 1E3 !== 0) {
             if (console) {
                 console.warn('Failed triangluation.');
             }
-            return this;
+            return;
         }
-        const count = this.vertexArray.length / 2;
+
+        const count = bottom.length / dimension;
+
+        const preVertexCount = this.vertexArray.length;
+        const preCount = this.vertexArray.length / dimension;
+        if (preCount > 0) {
+            triangles = triangles.map(e => e + preCount);
+        }
+        // push bottom vertice
+        this.vertexArray.push.apply(this.vertexArray, bottom);
+        // push bottom elements
+        this.elementArray.push.apply(this.elementArray, triangles);
+        // push bottom normals
+        for (let i = 0; i < count; i++) {
+            this.normalArray.push(0, 0, -1);
+        }
+
+
         if (count > 0) {
             triangles = triangles.map(e => e + count);
         }
-        this.vertexArray.push.apply(this.vertexArray, data.vertices);
+        // push top vertice
+        this.vertexArray.push.apply(this.vertexArray, top);
+        // push top elements
         this.elementArray.push.apply(this.elementArray, triangles);
+        // push top normals
+        for (let i = 0; i < count; i++) {
+            this.normalArray.push(0, 0, 1);
+        }
 
-        // 添加样式数据
-        this._addTexCoords(data.vertices.length / 2, style);
-        return this;
+        // push wall elements
+        const vertexCount = this.vertexArray.length / dimension;
+        for (let i = 0, l = count; i < l - 1; i++) {
+            const ii = i * dimension;
+            const normal = new Point(bottom[ii + 3], bottom[ii + 4]).sub(new Point(bottom[ii], bottom[ii + 1]))._unit()._perp();
+            this.vertexArray.push(bottom[ii], bottom[ii + 1], bottom[ii + 2]);
+            this.vertexArray.push(bottom[ii + 3], bottom[ii + 4], bottom[ii + 5]);
+            this.vertexArray.push(top[ii + 3], top[ii + 4], top[ii + 5]);
+            this.vertexArray.push(top[ii], top[ii + 1], top[ii + 2]);
+            for (let n = 0; n < 4; n++) {
+                this.normalArray.push(normal.x, normal.y, 0);
+            }
+            const ei = i * 4;
+            this.elementArray.push(vertexCount + ei, vertexCount + ei + 1, vertexCount + ei + 2);
+            this.elementArray.push(vertexCount + ei, vertexCount + ei + 2, vertexCount + ei + 3);
+        }
+
+
+        // push styles
+        this._addTexCoords(this.vertexArray.length - preVertexCount, style);
     }
 
     _getVertice(geo) {
@@ -131,4 +185,4 @@ export default class PolygonPainter extends Painter {
     }
 }
 
-PolygonPainter.mergeOptions(options);
+ExtrudePainter.mergeOptions(options);

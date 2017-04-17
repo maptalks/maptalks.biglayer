@@ -1,6 +1,7 @@
 import * as maptalks from 'maptalks';
 import Painter from './Painter';
 import Point from 'point-geometry';
+import { getTargetZoom } from './Painter';
 
 const options = {
     'project' : true
@@ -69,7 +70,7 @@ export default class LinePainter extends Painter {
             return this;
         }
         // 当前已处理的element(三角形)数量
-        const prevElementLen = this.elementArray.length;
+        const preVertexLen = this.vertexArray.length;
 
         const vertice = this._getVertice(line);
 
@@ -83,7 +84,7 @@ export default class LinePainter extends Painter {
 
         this._prepareToAdd();
 
-        const maxZ = this.map.getMaxZoom();
+        const targetZ = getTargetZoom(this.map);
 
         //遍历, 依次添加端点
         let currentVertex, nextVertex;
@@ -91,13 +92,13 @@ export default class LinePainter extends Painter {
             let vertex = vertice[i];
             if (this.options['project']) {
                 //输入是经纬度时, 转化为2d point
-                vertex = this.map.coordinateToPoint(new maptalks.Coordinate(vertex), maxZ).toArray();
+                vertex = this.map.coordinateToPoint(new maptalks.Coordinate(vertex), targetZ).toArray();
             }
             currentVertex = Point.convert(vertex);
             if (i < l - 1) {
                 vertex = vertice[i + 1];
                 if (this.options['project']) {
-                    vertex = this.map.coordinateToPoint(new maptalks.Coordinate(vertex), maxZ).toArray();
+                    vertex = this.map.coordinateToPoint(new maptalks.Coordinate(vertex), targetZ).toArray();
                 }
                 nextVertex = Point.convert(vertex);
             } else {
@@ -106,9 +107,9 @@ export default class LinePainter extends Painter {
             this.addCurrentVertex(currentVertex, nextVertex);
         }
         // 新增的element数量
-        const elementCount = this.elementArray.length - prevElementLen;
+        const count = this.vertexArray.length - preVertexLen;
         // 添加样式数据
-        this._addTexCoords(elementCount, style);
+        this._addTexCoords(count, style);
         return this;
     }
 
@@ -164,7 +165,7 @@ export default class LinePainter extends Painter {
             nextNormal = nextVertex.sub(currentVertex)._unit()._perp()._mult(-1);
         }
 
-        let preJoinNormal = this._getStartNormal(normal, this.preNormal);
+        const preJoinNormal = this._getStartNormal(normal, this.preNormal);
 
         // 1. 计算线段左侧的joinNormal
         // 2. 添加线段左侧端点(e0, e1)到结果数组中
@@ -175,7 +176,7 @@ export default class LinePainter extends Painter {
 
         if (!nextVertex) {
             // 类似线段左侧端点的处理, 添加右侧端点(e2, e3)
-            let endNormal = this._getEndNormal(normal, nextNormal);
+            const endNormal = this._getEndNormal(normal, nextNormal);
             this._addLineEndVertexs(currentVertex, endNormal, this.distance);
         }
 

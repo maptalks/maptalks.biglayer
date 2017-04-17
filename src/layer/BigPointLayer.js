@@ -3,6 +3,7 @@ import BigDataLayer from './BigDataLayer';
 import WebglRenderer from '../Renderer';
 import shaders from '../shader/Shader';
 import kdbush from 'kdbush';
+import { getTargetZoom } from '../painter/Painter';
 
 export default class BigPointLayer extends BigDataLayer {
     identify(coordinate, options) {
@@ -66,7 +67,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
 
         if (!this._vertexCount) {
             const map = this.getMap(),
-                maxZ = map.getMaxZoom();
+                targetZ = getTargetZoom(map);
             const data = this.layer.data;
             const vertexTexCoords = [];
             const points = [];
@@ -77,7 +78,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
                 const tex = this._getTexCoord({ 'properties' : data[i][2] });
                 if (tex) {
                     this._vertexCount++;
-                    const cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ);
+                    const cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), targetZ);
                     vertexTexCoords.push(cp.x, cp.y, tex.idx);
                     points.push([cp.x, cp.y, tex.size, tex.offset, data[i]]);
                     // find max size of icons, will use it for identify tolerance.
@@ -112,7 +113,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
             return null;
         }
         const map = this.getMap();
-        const c = map.coordinateToPoint(coordinate, map.getMaxZoom());
+        const c = map.coordinateToPoint(coordinate, map.getMaxNativeZoom());
         // scale the icon size to the max zoom level.
         const scale = map.getScale();
         const w = scale * this._maxIconSize[0],
@@ -130,12 +131,12 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
 
         const result = [];
         for (let i = 0, l = ids.length; i < l; i++) {
-            let p = this._indexPoints[ids[i]];
-            let x = p[0],
+            const p = this._indexPoints[ids[i]];
+            const x = p[0],
                 y = p[1];
-            let size = p[2],
+            const size = p[2],
                 offset = p[3];
-            let extent = [
+            const extent = [
                 scale * (-size[0] / 2 + offset.x),
                 scale * (-size[1] / 2 + offset.y),
                 scale * (size[0] / 2 + offset.x),

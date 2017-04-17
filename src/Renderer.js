@@ -1,5 +1,8 @@
 import * as maptalks from 'maptalks';
 import { mat4 } from 'gl-matrix';
+import { getTargetZoom } from '../painter/Painter';
+
+const RADIAN = Math.PI / 180;
 
 export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
 
@@ -28,8 +31,10 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
             this.onCanvasCreate();
         }
 
-        this.buffer = maptalks.Canvas.createCanvas(this.canvas.width, this.canvas.height, map.CanvasClass);
-        this.context = this.buffer.getContext('2d');
+        if (this.layer.options['doubleBuffer']) {
+            this.buffer = maptalks.Canvas.createCanvas(this.canvas.width, this.canvas.height, map.CanvasClass);
+            this.context = this.buffer.getContext('2d');
+        }
     }
 
     resizeCanvas(canvasSize) {
@@ -53,12 +58,17 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         if (!this.canvas) {
             return;
         }
-
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+        if (this.context) {
+            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
     }
 
     prepareCanvas() {
+        if (this.context) {
+            // the layer is double buffered, clip the canvas with layer's mask.
+            return super.prepareCanvas();
+        }
         if (!this.canvas) {
             this.createCanvas();
         } else {
@@ -84,7 +94,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
             h = 0;
         sprites.forEach(function (s) {
             if (forPoint) {
-                let len = Math.max(s.canvas.width, s.canvas.height);
+                const len = Math.max(s.canvas.width, s.canvas.height);
                 w += len + buffer;
                 if (len > h) {
                     h = len;
@@ -111,7 +121,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         sprites.forEach(function (s) {
             let dx = 0, dy = 0, len;
             if (forPoint) {
-                let cw = s.canvas.width,
+                const cw = s.canvas.width,
                     ch = s.canvas.height;
                 len = Math.max(cw, ch);
                 dx = len > cw ? (len - cw) / 2 : 0;
@@ -170,7 +180,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
 
             let offset = 0;
             for (let i = 0; i < attributes.length; i++) {
-                let attr = gl.getAttribLocation(gl.program, attributes[i][0]);
+                const attr = gl.getAttribLocation(gl.program, attributes[i][0]);
                 if (attr < 0) {
                     throw new Error('Failed to get the storage location of ' + attributes[i][0]);
                 }
@@ -179,7 +189,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
                 gl.enableVertexAttribArray(attr);
             }
         } else {
-            let attr = gl.getAttribLocation(gl.program, attributes[0]);
+            const attr = gl.getAttribLocation(gl.program, attributes[0]);
             gl.vertexAttribPointer(attr, attributes[1], gl[attributes[2] || 'FLOAT'], false, 0, 0);
             gl.enableVertexAttribArray(attr);
         }
@@ -277,7 +287,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         return uSampler;
     }
 
-    calcMatrices() {
+    _calcMatrices() {
         const map = this.getMap();
         const size = map.getSize(),
             scale = map.getScale();
@@ -286,7 +296,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         const cameraToCenterDistance = 0.5 / Math.tan(fov / 2) * size.height * scale;
 
         const m = mat4.create();
-        mat4.perspective(m, fov, size.width / size.height, 1, cameraToCenterDistance);
+        mat4.perspective(m, fov, size.width / size.height, 1, cameraToCenterDistance + 1E9);
         if (!maptalks.Util.isNode) {
             // doesn't need to flip Y with headless-gl, unknown reason
             mat4.scale(m, m, [1, -1, 1]);
@@ -298,9 +308,78 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         return m;
     }
 
+    calcMatrices() {
+        const map = this.getMap();
+        const size = map.getSize();
+        const fov = map.getFov() * Math.PI / 180;
+        const maxScale = map.getScale(map.getMinZoom()) / map.getScale(map.getMaxNativeZoom());
+        const farZ = maxScale * size.height / 2 / this._getFovRatio();
+        const m = mat4.create();
+        mat4.perspective(m, fov, size.width / size.height, 1, farZ);
+        const m1 = mat4.create();
+        if (!maptalks.Util.isNode) {
+            // doesn't need to flip Y with headless-gl, unknown reason
+            mat4.scale(m, m, [1, -1, 1]);
+        }
+        mat4.copy(m1, m);
+        const m2 = this._getLookAtMat();
+        mat4.multiply(m, m1, m2);
+        console.log(m1.join());
+        console.log(m.join());
+        // console.log(this._calcMatrices().join());
+        return m;
+    }
+
+    _getLookAtMat() {
+        const map = this.getMap();
+
+        const targetZ = getTargetZoom(map);
+
+        const size = map.getSize(),
+            scale = map.getScale() / map.getScale(targetZ);
+        // const center = this.cameraCenter = map._prjToPoint(map._getPrjCenter(), map.getMaxNativeZoom());
+        const center2D = this.cameraCenter = map.coordinateToPoint(map.getCenter(), targetZ);
+        const pitch = map.getPitch() * RADIAN;
+        const bearing = -map.getBearing() * RADIAN;
+
+        const ratio = this._getFovRatio();
+        const z = scale * size.height / 2 / ratio;
+        const cz = z * Math.cos(pitch);
+        // and [dist] away from map's center on XY plane to tilt the scene.
+        const dist = Math.sin(pitch) * z;
+        // when map rotates, the camera's xy position is rotating with the given bearing and still keeps [dist] away from map's center
+        const cx = center2D.x + dist * Math.sin(bearing);
+        const cy = center2D.y + dist * Math.cos(bearing);
+
+        // when map rotates, camera's up axis is pointing to south direction of map
+        const up = [Math.sin(bearing), Math.cos(bearing), 0];
+        const m = mat4.create();
+        mat4.lookAt(m, [cx, cy, cz], [center2D.x, center2D.y, 0], up);
+        return m;
+    }
+
+    _getFovRatio() {
+        const map = this.getMap();
+        const fov = map.getFov();
+        return Math.tan(fov / 2 * Math.PI / 180);
+    }
+
+    hitDetect(point) {
+        const gl = this.gl;
+        if (!gl) {
+            return false;
+        }
+        const pixels = new Uint8Array(1 * 1 * 4);
+        const map = this.getMap();
+        const h = this.canvas.height;
+        const cp = map._pointToContainerPoint(point)._round();
+        gl.readPixels(cp.x, h - cp.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        return (pixels[3] > 0);
+    }
+
     getCanvasImage() {
         const canvasImg = super.getCanvasImage();
-        if (canvasImg && canvasImg.image) {
+        if (canvasImg && canvasImg.image && this.buffer) {
             const canvas = canvasImg.image;
             if (this.buffer.width !== canvas.width || this.buffer.height !== canvas.height || !this._preserveBuffer) {
                 this.buffer.width = canvas.width;
@@ -315,12 +394,10 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
     }
 
     onZoomStart() {
-        this._preserveBuffer = true;
         super.onZoomStart.apply(this, arguments);
     }
 
     onZoomEnd() {
-        this._preserveBuffer = false;
         super.onZoomEnd.apply(this, arguments);
     }
 
@@ -380,7 +457,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
     _initUniforms(program, uniforms) {
         for (let i = 0; i < uniforms.length; i++) {
             let name = uniforms[i];
-            let b = name.indexOf('[');
+            const b = name.indexOf('[');
             if (b >= 0) {
                 name = name.substring(0, b);
             }

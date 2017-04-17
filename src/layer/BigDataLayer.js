@@ -1,9 +1,10 @@
-'use strict';
-
 import * as maptalks from 'maptalks';
 
 const options = {
-    'renderer' : 'webgl'
+    'renderer' : 'webgl',
+    'doublBuffer' : false,
+    'renderOnMoving' : false,
+    'renderOnZooming' : false
 };
 
 export default class BigDataLayer extends maptalks.Layer {

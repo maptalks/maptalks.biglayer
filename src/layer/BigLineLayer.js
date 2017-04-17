@@ -1,10 +1,8 @@
-import * as maptalks from 'maptalks';
 import shaders from '../shader/Shader';
 import LinePainter from '../painter/LinePainter';
-import LineAtlas from '../painter/LineAtlas';
 import BigDataLayer from './BigDataLayer';
-import WebglRenderer from '../Renderer';
-import Color from 'color';
+import PathRenderer from './renderer/PathRenderer';
+import { getTargetZoom } from './Painter';
 
 const options = {
     'blur' : 2
@@ -25,51 +23,13 @@ BigLineLayer.registerJSONType('BigLineLayer');
     'lineDasharray' : [20, 10, 30, 20]
 };*/
 
-export class BigLineRenderer extends WebglRenderer {
+export class BigLineRenderer extends PathRenderer {
 
-    constructor(layer) {
-        super(layer);
-        this._needCheckStyle = true;
-        this._needCheckSprites = true;
-        this._registerEvents();
-    }
-
-    checkResources() {
-        if (!this._needCheckStyle) {
-            return [];
-        }
-
-        const resources = [];
-        if (this.layer._cookedStyles) {
-            this.layer._cookedStyles.forEach(function (s) {
-                s['symbol'] = maptalks.Util.convertResourceUrl(s['symbol']);
-                const res = maptalks.Util.getExternalResources(s['symbol'], true);
-                if (res) {
-                    resources.push(res);
-                }
-            });
-        }
-
-
-        this._needCheckStyle = false;
-
-        this._needCheckSprites = true;
-
-        this._textureLoaded = false;
-
-        if (resources.length === 0) {
-            return [];
-        }
-
-        return resources;
-    }
 
     onCanvasCreate() {
-        // enable drawElements to use UNSIGNED_INT as the type of element array buffer
-        // default type is UNSIGNED_SHORT(0 ~ 65536)
-        this.gl.getExtension('OES_element_index_uint');
         const uniforms = ['u_matrix', 'u_scale', 'u_tex_size', /*'u_blur',*/ 'u_styles'];
         this._lineProgram = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
+        super.onCanvasCreate();
     }
 
     draw() {
@@ -82,90 +42,12 @@ export class BigLineRenderer extends WebglRenderer {
     }
 
     onRemove() {
-        this._removeEvents();
-        delete this._sprites;
         delete this._lineArrays;
         super.onRemove.apply(this, arguments);
     }
 
-    _checkSprites() {
-        if (!this._needCheckSprites) {
-            return;
-        }
-        this._atlas = new LineAtlas(this.resources);
-        const sprites = [];
-        if (this.layer._cookedStyles) {
-            this.layer._cookedStyles.forEach(s => {
-                let sprite = this._atlas.getAtlas(s.symbol, false);
-                if (sprite) {
-                    sprites.push(sprite);
-                }
-            });
-        }
-
-        this._sprites = this.mergeSprites(sprites);
-
-        if (this._sprites && typeof (window) != 'undefined' && window.MAPTALKS_WEBGL_DEBUG_CANVAS) {
-            let debugCanvas = window.MAPTALKS_WEBGL_DEBUG_CANVAS;
-            debugCanvas.getContext('2d').fillRect(0, 0, debugCanvas.width, debugCanvas.height);
-            debugCanvas.getContext('2d').fillStyle = 'rgb(255, 255, 255)';
-            debugCanvas.getContext('2d').fillRect(0, 0, this._sprites.canvas.width, this._sprites.canvas.height);
-            debugCanvas.getContext('2d').drawImage(this._sprites.canvas, 0, 0);
-        }
-
-        this._needCheckSprites = false;
-
-        if (this._sprites && !this._textureLoaded) {
-            this.loadTexture(this._sprites.canvas);
-            this.enableSampler('u_image');
-            this._textureLoaded = true;
-        }
-
-        let counter = 0;
-        const uStyle = this._uStyle = [];
-        for (let i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
-            let style = this.layer._cookedStyles[i];
-            let texture = this._atlas.getAtlas(style.symbol);
-            if (texture) {
-                // 模式填充或有dasharray时, 添加三位纹理坐标
-                // 0: x坐标, 1: 纹理长度, 2: 纹理宽度, 3: -1
-                uStyle.push.apply(uStyle, this._sprites.texCoords[counter++]);
-                uStyle.push(-1);
-            } else {
-                // 线是简单的颜色填充
-                // 0: r, 1: g, 2: b, 3: a
-                let color = style.symbol['lineColor'] || '#000000';
-                color = Color(color).rgbaArrayNormalized();
-                uStyle.push.apply(uStyle, color);
-            }
-        }
-    }
-
-    _getDataSymbol(props) {
-        let count = -1;
-        for (let i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
-            let style = this.layer._cookedStyles[i];
-            let texture = this._atlas.getAtlas(style.symbol);
-            if (texture) {
-                count++;
-            }
-            if (style.filter(props) === true) {
-                if (texture) {
-                    return {
-                        'symbol' : style.symbol,
-                        'texCoord' : this._sprites.texCoords[count],
-                        'index' : i
-                    };
-                } else {
-                    return {
-                        'symbol' : style.symbol,
-                        'index' : i
-                    };
-                }
-
-            }
-        }
-        return null;
+    getTexture(symbol) {
+        return this.getLineTexture(symbol);
     }
 
     _drawLines() {
@@ -174,30 +56,13 @@ export class BigLineRenderer extends WebglRenderer {
             program = this._lineProgram;
         this.useProgram(program);
         this._checkSprites();
-        const data = this.layer.data;
-        if (!this._lineArrays) {
-            let painter = new LinePainter(gl, map),
-                symbol;
-            for (let i = 0, l = data.length; i < l; i++) {
-                if (Array.isArray(data[i])) {
-                    symbol = this._getDataSymbol(data[i][1]);
-                    painter.addLine(data[i][0], symbol);
-                } else if (data[i].properties) {
-                    //geojson
-                    symbol = this._getDataSymbol(data[i].properties);
-                    painter.addLine(data[i], symbol);
-                }
-            }
-            // TODO 处理纹理坐标
-            let lineArrays = this._lineArrays = painter.getArrays();
 
-            this._elementCount = lineArrays.elementArray.length;
-        }
+        this._prepareData();
         this._bufferLineData(this._lineArrays);
 
         const m = this.calcMatrices();
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
-        gl.uniform1f(program.u_scale, map.getScale());
+        gl.uniform1f(program.u_scale, map.getScale() / map.getScale(getTargetZoom(map)));
         gl.uniform1fv(program.u_styles, this._uStyle);
         // gl.uniform1f(program.u_linewidth, symbol['lineWidth'] / 2);
         // var color = Color(symbol['lineColor']).rgbaArray().map(function (c, i) { if (i===3) { return c; } else {return c / 255;}});
@@ -212,6 +77,31 @@ export class BigLineRenderer extends WebglRenderer {
         gl.drawElements(gl.TRIANGLES, this._elementCount, gl.UNSIGNED_INT, 0);
         //release element buffer
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+    }
+
+    _prepareData() {
+        if (this._lineArrays) {
+            return;
+        }
+        const gl = this.gl,
+            map = this.getMap();
+        const data = this.layer.data;
+        const painter = new LinePainter(gl, map);
+        let symbol;
+        for (let i = 0, l = data.length; i < l; i++) {
+            if (Array.isArray(data[i])) {
+                symbol = this.getDataSymbol(data[i][1]);
+                painter.addLine(data[i][0], symbol);
+            } else if (data[i].properties) {
+                //geojson
+                symbol = this.getDataSymbol(data[i].properties);
+                painter.addLine(data[i], symbol);
+            }
+        }
+        // TODO 处理纹理坐标
+        const lineArrays = this._lineArrays = painter.getArrays();
+
+        this._elementCount = lineArrays.elementArray.length;
     }
 
     _bufferLineData(lineArrays) {
@@ -267,18 +157,6 @@ export class BigLineRenderer extends WebglRenderer {
 
 
         // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-    }
-
-    _registerEvents() {
-        this.layer.on('setstyle', this._onStyleChanged, this);
-    }
-
-    _removeEvents() {
-        this.layer.off('setstyle', this._onStyleChanged, this);
-    }
-
-    _onStyleChanged() {
-        this._needCheckStyle = true;
     }
 }
 

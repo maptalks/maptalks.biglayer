@@ -7,3 +7,7 @@ export default class Painter extends maptalks.Class {
         this.map = map;
     }
 }
+
+export function getTargetZoom(map) {
+    return map.getMaxNativeZoom() / 2;
+}
