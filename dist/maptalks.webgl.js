@@ -3528,6 +3528,7 @@ vec2$1.equals = function (a, b) {
 };
 
 var mat4 = mat4_1;
+var vec3 = vec3_1;
 
 function _defaults(obj, defaults) { var keys = Object.getOwnPropertyNames(defaults); for (var i = 0; i < keys.length; i++) { var key = keys[i]; var value = Object.getOwnPropertyDescriptor(defaults, key); if (value && value.configurable && obj[key] === undefined) { Object.defineProperty(obj, key, value); } } return obj; }
 
@@ -3597,6 +3598,28 @@ var possibleConstructorReturn = function (self, call) {
   return call && (typeof call === "object" || typeof call === "function") ? call : self;
 };
 
+var Painter = function (_maptalks$Class) {
+    inherits(Painter, _maptalks$Class);
+
+    function Painter(gl, map, options) {
+        classCallCheck(this, Painter);
+
+        var _this = possibleConstructorReturn(this, _maptalks$Class.call(this, options));
+
+        _this.gl = gl;
+        _this.map = map;
+        return _this;
+    }
+
+    return Painter;
+}(maptalks.Class);
+
+function getTargetZoom(map) {
+    return map.getMaxNativeZoom() / 2;
+}
+
+var RADIAN = Math.PI / 180;
+
 var WebglRenderer = function (_maptalks$renderer$Ca) {
     inherits(WebglRenderer, _maptalks$renderer$Ca);
 
@@ -3627,8 +3650,10 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
             this.onCanvasCreate();
         }
 
-        this.buffer = maptalks.Canvas.createCanvas(this.canvas.width, this.canvas.height, map.CanvasClass);
-        this.context = this.buffer.getContext('2d');
+        if (this.layer.options['doubleBuffer']) {
+            this.buffer = maptalks.Canvas.createCanvas(this.canvas.width, this.canvas.height, map.CanvasClass);
+            this.context = this.buffer.getContext('2d');
+        }
     };
 
     WebglRenderer.prototype.resizeCanvas = function resizeCanvas(canvasSize) {
@@ -3652,12 +3677,16 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
         if (!this.canvas) {
             return;
         }
-
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+        if (this.context) {
+            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
     };
 
     WebglRenderer.prototype.prepareCanvas = function prepareCanvas() {
+        if (this.context) {
+            return _maptalks$renderer$Ca.prototype.prepareCanvas.call(this);
+        }
         if (!this.canvas) {
             this.createCanvas();
         } else {
@@ -3860,7 +3889,7 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
         return uSampler;
     };
 
-    WebglRenderer.prototype.calcMatrices = function calcMatrices() {
+    WebglRenderer.prototype._calcMatrices = function _calcMatrices() {
         var map = this.getMap();
         var size = map.getSize(),
             scale = map.getScale();
@@ -3869,7 +3898,7 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
         var cameraToCenterDistance = 0.5 / Math.tan(fov / 2) * size.height * scale;
 
         var m = mat4.create();
-        mat4.perspective(m, fov, size.width / size.height, 1, cameraToCenterDistance);
+        mat4.perspective(m, fov, size.width / size.height, 1, cameraToCenterDistance + 1E9);
         if (!maptalks.Util.isNode) {
             mat4.scale(m, m, [1, -1, 1]);
         }
@@ -3880,9 +3909,73 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
         return m;
     };
 
+    WebglRenderer.prototype.calcMatrices = function calcMatrices() {
+        var map = this.getMap();
+        var size = map.getSize();
+        var fov = map.getFov() * Math.PI / 180;
+        var maxScale = map.getScale(map.getMinZoom()) / map.getScale(map.getMaxNativeZoom());
+        var farZ = maxScale * size.height / 2 / this._getFovRatio();
+        var m = mat4.create();
+        mat4.perspective(m, fov, size.width / size.height, 1, farZ);
+        var m1 = mat4.create();
+        if (!maptalks.Util.isNode) {
+            mat4.scale(m, m, [1, -1, 1]);
+        }
+        mat4.copy(m1, m);
+        var m2 = this._getLookAtMat();
+        mat4.multiply(m, m1, m2);
+        return m;
+    };
+
+    WebglRenderer.prototype._getLookAtMat = function _getLookAtMat() {
+        var map = this.getMap();
+
+        var targetZ = getTargetZoom(map);
+
+        var size = map.getSize(),
+            scale = map.getScale() / map.getScale(targetZ);
+
+        var center2D = this.cameraCenter = map.coordinateToPoint(map.getCenter(), targetZ);
+        var pitch = map.getPitch() * RADIAN;
+        var bearing = -map.getBearing() * RADIAN;
+
+        var ratio = this._getFovRatio();
+        var z = scale * size.height / 2 / ratio;
+        var cz = z * Math.cos(pitch);
+
+        var dist = Math.sin(pitch) * z;
+
+        var cx = center2D.x + dist * Math.sin(bearing);
+        var cy = center2D.y + dist * Math.cos(bearing);
+
+        var up = [Math.sin(bearing), Math.cos(bearing), 0];
+        var m = mat4.create();
+        mat4.lookAt(m, [cx, cy, cz], [center2D.x, center2D.y, 0], up);
+        return m;
+    };
+
+    WebglRenderer.prototype._getFovRatio = function _getFovRatio() {
+        var map = this.getMap();
+        var fov = map.getFov();
+        return Math.tan(fov / 2 * Math.PI / 180);
+    };
+
+    WebglRenderer.prototype.hitDetect = function hitDetect(point) {
+        var gl = this.gl;
+        if (!gl) {
+            return false;
+        }
+        var pixels = new Uint8Array(1 * 1 * 4);
+        var map = this.getMap();
+        var h = this.canvas.height;
+        var cp = map._pointToContainerPoint(point)._round();
+        gl.readPixels(cp.x, h - cp.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        return pixels[3] > 0;
+    };
+
     WebglRenderer.prototype.getCanvasImage = function getCanvasImage() {
         var canvasImg = _maptalks$renderer$Ca.prototype.getCanvasImage.call(this);
-        if (canvasImg && canvasImg.image) {
+        if (canvasImg && canvasImg.image && this.buffer) {
             var canvas = canvasImg.image;
             if (this.buffer.width !== canvas.width || this.buffer.height !== canvas.height || !this._preserveBuffer) {
                 this.buffer.width = canvas.width;
@@ -3897,12 +3990,10 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
     };
 
     WebglRenderer.prototype.onZoomStart = function onZoomStart() {
-        this._preserveBuffer = true;
         _maptalks$renderer$Ca.prototype.onZoomStart.apply(this, arguments);
     };
 
     WebglRenderer.prototype.onZoomEnd = function onZoomEnd() {
-        this._preserveBuffer = false;
         _maptalks$renderer$Ca.prototype.onZoomEnd.apply(this, arguments);
     };
 
@@ -3970,22 +4061,6 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
     return WebglRenderer;
 }(maptalks.renderer.CanvasRenderer);
 
-var Painter = function (_maptalks$Class) {
-    inherits(Painter, _maptalks$Class);
-
-    function Painter(gl, map, options) {
-        classCallCheck(this, Painter);
-
-        var _this = possibleConstructorReturn(this, _maptalks$Class.call(this, options));
-
-        _this.gl = gl;
-        _this.map = map;
-        return _this;
-    }
-
-    return Painter;
-}(maptalks.Class);
-
 var LineAtlas = function () {
     function LineAtlas(resources, options) {
         classCallCheck(this, LineAtlas);
@@ -3995,11 +4070,11 @@ var LineAtlas = function () {
         this.atlas = {};
     }
 
-    LineAtlas.prototype.getAtlas = function getAtlas(symbol, round) {
-        var key = JSON.stringify(symbol) + '_' + round;
+    LineAtlas.prototype.getAtlas = function getAtlas(symbol) {
+        var key = JSON.stringify(symbol);
 
         if (!this.atlas[key]) {
-            var atlas = this.addAtlas(symbol, round);
+            var atlas = this.addAtlas(symbol);
             if (atlas) {
                 this.atlas[key] = atlas;
             }
@@ -4007,12 +4082,12 @@ var LineAtlas = function () {
         return this.atlas[key];
     };
 
-    LineAtlas.prototype.addAtlas = function addAtlas(symbol, round) {
+    LineAtlas.prototype.addAtlas = function addAtlas(symbol) {
         if (!symbol['lineDasharray'] && !symbol['linePatternFile']) {
             return null;
         }
 
-        var size = this._getSize(symbol, round, this.resources);
+        var size = this._getSize(symbol, this.resources);
 
         var canvas = this._createCanvas(size);
 
@@ -4033,7 +4108,7 @@ var LineAtlas = function () {
         };
     };
 
-    LineAtlas.prototype._getSize = function _getSize(symbol, round, resources) {
+    LineAtlas.prototype._getSize = function _getSize(symbol, resources) {
         var w = 0,
             h = 0;
         var dashArray = symbol['lineDasharray'];
@@ -4301,7 +4376,7 @@ var LinePainter = function (_Painter) {
             return this;
         }
 
-        var prevElementLen = this.elementArray.length;
+        var preVertexLen = this.vertexArray.length;
 
         var vertice = this._getVertice(line);
 
@@ -4314,20 +4389,20 @@ var LinePainter = function (_Painter) {
 
         this._prepareToAdd();
 
-        var maxZ = this.map.getMaxZoom();
+        var targetZ = getTargetZoom(this.map);
 
         var currentVertex = void 0,
             nextVertex = void 0;
         for (var _i = 0, _l = vertice.length; _i < _l; _i++) {
             var vertex = vertice[_i];
             if (this.options['project']) {
-                vertex = this.map.coordinateToPoint(new maptalks.Coordinate(vertex), maxZ).toArray();
+                vertex = this.map.coordinateToPoint(new maptalks.Coordinate(vertex), targetZ).toArray();
             }
             currentVertex = index$1.convert(vertex);
             if (_i < _l - 1) {
                 vertex = vertice[_i + 1];
                 if (this.options['project']) {
-                    vertex = this.map.coordinateToPoint(new maptalks.Coordinate(vertex), maxZ).toArray();
+                    vertex = this.map.coordinateToPoint(new maptalks.Coordinate(vertex), targetZ).toArray();
                 }
                 nextVertex = index$1.convert(vertex);
             } else {
@@ -4336,9 +4411,9 @@ var LinePainter = function (_Painter) {
             this.addCurrentVertex(currentVertex, nextVertex);
         }
 
-        var elementCount = this.elementArray.length - prevElementLen;
+        var count = this.vertexArray.length - preVertexLen;
 
-        this._addTexCoords(elementCount, style);
+        this._addTexCoords(count, style);
         return this;
     };
 
@@ -5051,9 +5126,6 @@ var PolygonPainter = function (_Painter) {
     }
 
     PolygonPainter.prototype.getArrays = function getArrays() {
-        console.log('polygon.vertex', this.vertexArray.length);
-        console.log('polygon.element', this.elementArray.length);
-        console.log('polygon.style', this.styleArray.length);
         return {
             'vertexArray': this.vertexArray,
             'elementArray': this.elementArray,
@@ -5084,17 +5156,17 @@ var PolygonPainter = function (_Painter) {
                 return;
             }
             if (!_this2._equalCoord(ring[0], ring[ring.length - 1])) {
-                ring.push(ring[0]);
+                ring.push(ring[0], ring[1]);
             }
         });
-        var maxZ = this.map.getMaxZoom();
+        var targetZ = getTargetZoom(this.map);
         var data = earcut_1.flatten(vertice);
 
         if (this.options['project']) {
             var v = [];
             var c = void 0;
             for (var _i = 0, _l = data.vertices.length; _i < _l; _i += 2) {
-                c = this.map.coordinateToPoint(new maptalks.Coordinate(data.vertices[_i], data.vertices[_i + 1]), maxZ);
+                c = this.map.coordinateToPoint(new maptalks.Coordinate(data.vertices[_i], data.vertices[_i + 1]), targetZ);
                 v.push(c.x, c.y);
             }
             data.vertices = v;
@@ -5119,7 +5191,7 @@ var PolygonPainter = function (_Painter) {
         this.vertexArray.push.apply(this.vertexArray, data.vertices);
         this.elementArray.push.apply(this.elementArray, triangles);
 
-        this._addTexCoords(triangles.length, style);
+        this._addTexCoords(data.vertices.length / 2, style);
         return this;
     };
 
@@ -5160,7 +5232,11 @@ var pointVertex = '\n// marker\'s 2d point at max zoom\nattribute vec4 a_pos;\n/
 
 var polygonFragment = "\nprecision mediump float;\n\nvarying vec4 v_texcoord;\nvarying float v_opacity;\nvoid main() {\n    gl_FragColor = v_texcoord * v_opacity;\n}";
 
-var polygonVertex = 'attribute vec4 a_pos;\n//tex_idx * 100 + opacity * 10\nattribute float a_style;\n\nuniform mat4 u_matrix;\nuniform float u_styles[' + maxUniformLength + '];\n\nvarying float v_opacity;\nvarying vec4 v_texcoord;\n\nvoid main() {\n  int tex_idx = int(floor(a_style / 100.0));\n  v_opacity = mod(a_style, 100.0) / 10.0;\n  v_texcoord = vec4(u_styles[tex_idx], u_styles[tex_idx + 1], u_styles[tex_idx + 2], u_styles[tex_idx + 3]);\n\n  gl_Position = u_matrix * a_pos;\n}';
+var polygonVertex = 'attribute vec4 a_pos;\n//tex_idx * 100 + opacity * 10\nattribute float a_fill_style;\n\nuniform mat4 u_matrix;\nuniform float u_fill_styles[' + maxUniformLength + '];\n\nvarying float v_opacity;\nvarying vec4 v_texcoord;\n\nvoid main() {\n  int tex_idx = int(floor(a_fill_style / 100.0));\n  v_opacity = mod(a_fill_style, 100.0) / 10.0;\n  v_texcoord = vec4(u_fill_styles[tex_idx], u_fill_styles[tex_idx + 1], u_fill_styles[tex_idx + 2], u_fill_styles[tex_idx + 3]);\n\n  gl_Position = u_matrix * a_pos;\n}';
+
+var extrudeFragment = "\nprecision mediump float;\n\nvarying vec4 v_texcoord;\nvarying float v_opacity;\n// varying vec4 v_lighting;\n\nvoid main() {\n    gl_FragColor = v_texcoord * v_opacity;\n}";
+
+var extrudeVertex = 'attribute vec4 a_pos;\nattribute vec4 a_normal;\n//tex_idx * 100 + opacity * 10\nattribute float a_fill_style;\n\nuniform vec3 u_lightcolor;\nuniform lowp vec3 u_lightpos;\nuniform lowp float u_lightintensity;\nuniform vec3 u_ambientlight;\n\nuniform mat4 u_matrix;\nuniform float u_fill_styles[' + maxUniformLength + '];\n\nvarying float v_opacity;\nvarying vec4 v_texcoord;\n\nvarying vec4 v_lighting;\n\nvoid main() {\n  int tex_idx = int(floor(a_fill_style / 100.0));\n  v_opacity = mod(a_fill_style, 100.0) / 10.0;\n\n  vec4 color = vec4(u_fill_styles[tex_idx], u_fill_styles[tex_idx + 1], u_fill_styles[tex_idx + 2], u_fill_styles[tex_idx + 3]);\n\n  gl_Position = u_matrix * a_pos;\n\n  vec3 normal = normalize(a_normal.xyz);\n  // vec3 lightpos = normalize(u_lightpos);\n  float nDotL = max(dot(u_lightpos, normal), 0.0);\n  vec3 diffuse = u_lightcolor * color.rgb * nDotL;\n\n  vec3 ambient = u_ambientlight * color.rgb;\n\n  v_texcoord = vec4(diffuse + ambient, color.a);\n\n  // vec3 normal = normalize(a_normal.xyz);\n  // vec3 lightpos = normalize(u_lightpos.xyz);\n  // // codes from mapbox-gl-js\n  // v_lighting = vec4(0.0, 0.0, 0.0, 1.0);\n  // float directional = clamp(dot(normal, lightpos), 0.0, 1.0);\n  // directional = mix((1.0 - u_lightintensity), max((0.5 + u_lightintensity), 1.0), directional);\n\n  // // if (a_normal.y != 0.0) {\n  // //   directional *= clamp((t + base) * pow(height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);\n  // // }\n\n  // v_lighting.rgb += clamp(directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0));\n}';
 
 var shaders = {
     'line': {
@@ -5174,6 +5250,10 @@ var shaders = {
     'polygon': {
         'fragmentSource': polygonFragment,
         'vertexSource': polygonVertex
+    },
+    'extrude': {
+        'fragmentSource': extrudeFragment,
+        'vertexSource': extrudeVertex
     }
 };
 
@@ -5189,7 +5269,10 @@ var index = Object.freeze({
 });
 
 var options$2 = {
-    'renderer': 'webgl'
+    'renderer': 'webgl',
+    'doublBuffer': false,
+    'renderOnMoving': false,
+    'renderOnZooming': false
 };
 
 var BigDataLayer = function (_maptalks$Layer) {
@@ -5544,7 +5627,7 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
 
         if (!this._vertexCount) {
             var map = this.getMap(),
-                maxZ = map.getMaxZoom();
+                targetZ = getTargetZoom(map);
             var data = this.layer.data;
             var vertexTexCoords = [];
             var points = [];
@@ -5555,7 +5638,7 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
                 var tex = this._getTexCoord({ 'properties': data[i][2] });
                 if (tex) {
                     this._vertexCount++;
-                    var cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), maxZ);
+                    var cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), targetZ);
                     vertexTexCoords.push(cp.x, cp.y, tex.idx);
                     points.push([cp.x, cp.y, tex.size, tex.offset, data[i]]);
 
@@ -5590,7 +5673,7 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
             return null;
         }
         var map = this.getMap();
-        var c = map.coordinateToPoint(coordinate, map.getMaxZoom());
+        var c = map.coordinateToPoint(coordinate, map.getMaxNativeZoom());
 
         var scale = map.getScale();
         var w = scale * this._maxIconSize[0],
@@ -7612,40 +7695,21 @@ Color.prototype.setChannel = function (space, index, val) {
 
 var index$2 = Color;
 
-var options$3 = {
-    'blur': 2
-};
+var PathRenderer = function (_WebglRenderer) {
+    inherits(PathRenderer, _WebglRenderer);
 
-var BigLineLayer = function (_BigDataLayer) {
-    inherits(BigLineLayer, _BigDataLayer);
+    function PathRenderer(layer) {
+        classCallCheck(this, PathRenderer);
 
-    function BigLineLayer() {
-        classCallCheck(this, BigLineLayer);
-        return possibleConstructorReturn(this, _BigDataLayer.apply(this, arguments));
+        var _this = possibleConstructorReturn(this, _WebglRenderer.call(this, layer));
+
+        _this._needCheckStyle = true;
+        _this._needCheckSprites = true;
+        _this._registerEvents();
+        return _this;
     }
 
-    return BigLineLayer;
-}(BigDataLayer);
-
-BigLineLayer.mergeOptions(options$3);
-
-BigLineLayer.registerJSONType('BigLineLayer');
-
-var BigLineRenderer = function (_WebglRenderer) {
-    inherits(BigLineRenderer, _WebglRenderer);
-
-    function BigLineRenderer(layer) {
-        classCallCheck(this, BigLineRenderer);
-
-        var _this2 = possibleConstructorReturn(this, _WebglRenderer.call(this, layer));
-
-        _this2._needCheckStyle = true;
-        _this2._needCheckSprites = true;
-        _this2._registerEvents();
-        return _this2;
-    }
-
-    BigLineRenderer.prototype.checkResources = function checkResources() {
+    PathRenderer.prototype.checkResources = function checkResources() {
         if (!this._needCheckStyle) {
             return [];
         }
@@ -7674,46 +7738,83 @@ var BigLineRenderer = function (_WebglRenderer) {
         return resources;
     };
 
-    BigLineRenderer.prototype.onCanvasCreate = function onCanvasCreate() {
+    PathRenderer.prototype.onCanvasCreate = function onCanvasCreate() {
         this.gl.getExtension('OES_element_index_uint');
-        var uniforms = ['u_matrix', 'u_scale', 'u_tex_size', 'u_styles'];
-        this._lineProgram = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
     };
 
-    BigLineRenderer.prototype.draw = function draw() {
-        console.time('draw lines');
-        this.prepareCanvas();
-
-        this._drawLines();
-        console.timeEnd('draw lines');
-        this.completeRender();
-    };
-
-    BigLineRenderer.prototype.onRemove = function onRemove() {
+    PathRenderer.prototype.onRemove = function onRemove() {
         this._removeEvents();
+        delete this._fillSprites;
         delete this._sprites;
-        delete this._lineArrays;
         _WebglRenderer.prototype.onRemove.apply(this, arguments);
     };
 
-    BigLineRenderer.prototype._checkSprites = function _checkSprites() {
-        var _this3 = this;
+    PathRenderer.prototype.getDataSymbol = function getDataSymbol(props) {
+        var count = -1;
+        for (var i = 0, l = this.layer._cookedStyles.length; i < l; i++) {
+            var style = this.layer._cookedStyles[i];
+            var texture = this.getTexture(style.symbol);
+            if (texture) {
+                count++;
+            }
+            if (style.filter(props) === true) {
+                if (texture) {
+                    return {
+                        'symbol': style.symbol,
+                        'texCoord': this._fillSprites.texCoords[count],
+                        'index': i
+                    };
+                } else {
+                    return {
+                        'symbol': style.symbol,
+                        'index': i
+                    };
+                }
+            }
+        }
+        return null;
+    };
+
+    PathRenderer.prototype.getLineTexture = function getLineTexture(symbol) {
+        return this._atlas.getAtlas(symbol);
+    };
+
+    PathRenderer.prototype.getFillTexture = function getFillTexture(symbol) {
+        var fillPattern = symbol ? symbol['polygonPatternFile'] : null;
+        if (fillPattern) {
+            return this.resources.getImage(fillPattern);
+        }
+        return null;
+    };
+
+    PathRenderer.prototype._checkSprites = function _checkSprites() {
+        var _this2 = this;
 
         if (!this._needCheckSprites) {
             return;
         }
         this._atlas = new LineAtlas(this.resources);
         var sprites = [];
+        var fillSprites = [];
         if (this.layer._cookedStyles) {
             this.layer._cookedStyles.forEach(function (s) {
-                var sprite = _this3._atlas.getAtlas(s.symbol, false);
+                var sprite = _this2.getLineTexture(s.symbol);
                 if (sprite) {
                     sprites.push(sprite);
+                }
+
+                sprite = _this2.getFillTexture(s.symbol);
+                if (sprite) {
+                    fillSprites.push({
+                        'canvas': sprite,
+                        'offset': new maptalks.Point(0, 0)
+                    });
                 }
             });
         }
 
         this._sprites = this.mergeSprites(sprites);
+        this._fillSprites = this.mergeSprites(fillSprites);
 
         if (this._sprites && typeof window != 'undefined' && window.MAPTALKS_WEBGL_DEBUG_CANVAS) {
             var debugCanvas = window.MAPTALKS_WEBGL_DEBUG_CANVAS;
@@ -7731,11 +7832,17 @@ var BigLineRenderer = function (_WebglRenderer) {
             this._textureLoaded = true;
         }
 
+        if (this._fillSprites && !this._fillTextureLoaded) {
+            this.loadTexture(this._fillSprites.canvas);
+            this.enableSampler('u_fill_image');
+            this._fillTextureLoaded = true;
+        }
+
         var counter = 0;
         var uStyle = this._uStyle = [];
         for (var i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
             var style = this.layer._cookedStyles[i];
-            var texture = this._atlas.getAtlas(style.symbol);
+            var texture = this.getLineTexture(style.symbol);
             if (texture) {
                 uStyle.push.apply(uStyle, this._sprites.texCoords[counter++]);
                 uStyle.push(-1);
@@ -7745,32 +7852,87 @@ var BigLineRenderer = function (_WebglRenderer) {
                 uStyle.push.apply(uStyle, color);
             }
         }
-    };
 
-    BigLineRenderer.prototype._getDataSymbol = function _getDataSymbol(props) {
-        var count = -1;
-        for (var i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
-            var style = this.layer._cookedStyles[i];
-            var texture = this._atlas.getAtlas(style.symbol);
-            if (texture) {
-                count++;
-            }
-            if (style.filter(props) === true) {
-                if (texture) {
-                    return {
-                        'symbol': style.symbol,
-                        'texCoord': this._sprites.texCoords[count],
-                        'index': i
-                    };
-                } else {
-                    return {
-                        'symbol': style.symbol,
-                        'index': i
-                    };
-                }
+        counter = 0;
+        var uFillStyle = this._uFillStyle = [];
+        for (var _i = 0, _len = this.layer._cookedStyles.length; _i < _len; _i++) {
+            var _style = this.layer._cookedStyles[_i];
+            var _texture = this.getFillTexture(_style.symbol);
+            if (_texture) {
+                uFillStyle.push.apply(uFillStyle, this._fillSprites.texCoords[counter++]);
+                uFillStyle.push(-1);
+            } else {
+                var _color = _style.symbol['polygonFill'] || '#ffffff';
+                _color = index$2(_color).rgbaArrayNormalized();
+                uFillStyle.push.apply(uFillStyle, _color);
             }
         }
-        return null;
+    };
+
+    PathRenderer.prototype._registerEvents = function _registerEvents() {
+        this.layer.on('setstyle', this._onStyleChanged, this);
+    };
+
+    PathRenderer.prototype._removeEvents = function _removeEvents() {
+        this.layer.off('setstyle', this._onStyleChanged, this);
+    };
+
+    PathRenderer.prototype._onStyleChanged = function _onStyleChanged() {
+        this._needCheckStyle = true;
+    };
+
+    return PathRenderer;
+}(WebglRenderer);
+
+var options$3 = {
+    'blur': 2
+};
+
+var BigLineLayer = function (_BigDataLayer) {
+    inherits(BigLineLayer, _BigDataLayer);
+
+    function BigLineLayer() {
+        classCallCheck(this, BigLineLayer);
+        return possibleConstructorReturn(this, _BigDataLayer.apply(this, arguments));
+    }
+
+    return BigLineLayer;
+}(BigDataLayer);
+
+BigLineLayer.mergeOptions(options$3);
+
+BigLineLayer.registerJSONType('BigLineLayer');
+
+var BigLineRenderer = function (_PathRenderer) {
+    inherits(BigLineRenderer, _PathRenderer);
+
+    function BigLineRenderer() {
+        classCallCheck(this, BigLineRenderer);
+        return possibleConstructorReturn(this, _PathRenderer.apply(this, arguments));
+    }
+
+    BigLineRenderer.prototype.onCanvasCreate = function onCanvasCreate() {
+        var uniforms = ['u_matrix', 'u_scale', 'u_tex_size', 'u_styles'];
+        this._lineProgram = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
+        _PathRenderer.prototype.onCanvasCreate.call(this);
+    };
+
+    BigLineRenderer.prototype.draw = function draw() {
+        console.time('draw lines');
+        this.prepareCanvas();
+
+        this._drawLines();
+        console.timeEnd('draw lines');
+        this.completeRender();
+    };
+
+    BigLineRenderer.prototype.onRemove = function onRemove() {
+        delete this._lineArrays;
+        _PathRenderer.prototype.onRemove.apply(this, arguments);
+    };
+
+    BigLineRenderer.prototype.getTexture = function getTexture(symbol) {
+        return this.getLineTexture(symbol);
     };
 
     BigLineRenderer.prototype._drawLines = function _drawLines() {
@@ -7779,29 +7941,13 @@ var BigLineRenderer = function (_WebglRenderer) {
             program = this._lineProgram;
         this.useProgram(program);
         this._checkSprites();
-        var data = this.layer.data;
-        if (!this._lineArrays) {
-            var painter = new LinePainter(gl, map),
-                symbol = void 0;
-            for (var i = 0, l = data.length; i < l; i++) {
-                if (Array.isArray(data[i])) {
-                    symbol = this._getDataSymbol(data[i][1]);
-                    painter.addLine(data[i][0], symbol);
-                } else if (data[i].properties) {
-                    symbol = this._getDataSymbol(data[i].properties);
-                    painter.addLine(data[i], symbol);
-                }
-            }
 
-            var lineArrays = this._lineArrays = painter.getArrays();
-
-            this._elementCount = lineArrays.elementArray.length;
-        }
+        this._prepareLineData();
         this._bufferLineData(this._lineArrays);
 
         var m = this.calcMatrices();
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
-        gl.uniform1f(program.u_scale, map.getScale());
+        gl.uniform1f(program.u_scale, map.getScale() / map.getScale(getTargetZoom(map)));
         gl.uniform1fv(program.u_styles, this._uStyle);
 
         var texSize = [0, 0];
@@ -7812,6 +7958,30 @@ var BigLineRenderer = function (_WebglRenderer) {
         gl.drawElements(gl.TRIANGLES, this._elementCount, gl.UNSIGNED_INT, 0);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+    };
+
+    BigLineRenderer.prototype._prepareLineData = function _prepareLineData() {
+        if (this._lineArrays) {
+            return;
+        }
+        var gl = this.gl,
+            map = this.getMap();
+        var data = this.layer.data;
+        var painter = new LinePainter(gl, map);
+        var symbol = void 0;
+        for (var i = 0, l = data.length; i < l; i++) {
+            if (Array.isArray(data[i])) {
+                symbol = this.getDataSymbol(data[i][1]);
+                painter.addLine(data[i][0], symbol);
+            } else if (data[i].properties) {
+                symbol = this.getDataSymbol(data[i].properties);
+                painter.addLine(data[i], symbol);
+            }
+        }
+
+        var lineArrays = this._lineArrays = painter.getArrays();
+
+        this._elementCount = lineArrays.elementArray.length;
     };
 
     BigLineRenderer.prototype._bufferLineData = function _bufferLineData(lineArrays) {
@@ -7855,20 +8025,8 @@ var BigLineRenderer = function (_WebglRenderer) {
         }
     };
 
-    BigLineRenderer.prototype._registerEvents = function _registerEvents() {
-        this.layer.on('setstyle', this._onStyleChanged, this);
-    };
-
-    BigLineRenderer.prototype._removeEvents = function _removeEvents() {
-        this.layer.off('setstyle', this._onStyleChanged, this);
-    };
-
-    BigLineRenderer.prototype._onStyleChanged = function _onStyleChanged() {
-        this._needCheckStyle = true;
-    };
-
     return BigLineRenderer;
-}(WebglRenderer);
+}(PathRenderer);
 
 BigLineLayer.registerRenderer('webgl', BigLineRenderer);
 
@@ -7900,7 +8058,7 @@ BigPolygonLayer.registerRenderer('webgl', function (_BigLineRenderer) {
     }
 
     _class.prototype.onCanvasCreate = function onCanvasCreate() {
-        var uniforms = ['u_matrix', 'u_styles'];
+        var uniforms = ['u_matrix', 'u_fill_styles'];
         this._polygonProgram = this.createProgram(shaders.polygon.vertexSource, shaders.polygon.fragmentSource, uniforms);
         _BigLineRenderer.prototype.onCanvasCreate.call(this);
     };
@@ -7908,74 +8066,57 @@ BigPolygonLayer.registerRenderer('webgl', function (_BigLineRenderer) {
     _class.prototype.draw = function draw() {
         console.time('draw polygons');
         this.prepareCanvas();
+        this._drawPolygons();
         this.gl.disable(this.gl.BLEND);
         this._drawLines();
         this.gl.enable(this.gl.BLEND);
-        this._drawPolygons();
         console.timeEnd('draw polygons');
         this.completeRender();
     };
 
-    _class.prototype._checkSprites = function _checkSprites() {
-        if (!this._needCheckSprites) {
-            return;
-        }
-        if (this._needCheckSprites) {
-            this._polygonTextureLoaded = false;
-        }
-        _BigLineRenderer.prototype._checkSprites.call(this);
-        if (this._sprites && !this._polygonTextureLoaded) {
-            this.loadTexture(this._sprites.canvas);
-            this.enableSampler('u_image');
-            this._polygonTextureLoaded = true;
-        }
-        var counter = 0;
-        var uStyle = this._uPolygonStyle = [];
-        for (var i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
-            var style = this.layer._cookedStyles[i];
-            var texture = this._atlas.getAtlas(style.symbol);
-            if (texture) {
-                uStyle.push.apply(uStyle, this._sprites.texCoords[counter++]);
-                uStyle.push(-1);
-            } else {
-                var color = style.symbol['polygonFill'] || '#000000';
-                color = index$2(color).rgbaArrayNormalized();
-                uStyle.push.apply(uStyle, color);
-            }
-        }
+    _class.prototype.getTexture = function getTexture(symbol) {
+        return this.getFillTexture(symbol);
     };
 
     _class.prototype._drawPolygons = function _drawPolygons() {
         var gl = this.gl,
-            map = this.getMap(),
             program = this._polygonProgram;
         this.useProgram(program);
         this._checkSprites();
 
-        var data = this.layer.data;
-        if (!this._polygonArrays) {
-            var painter = new PolygonPainter(gl, map),
-                symbol = void 0;
-            for (var i = 0, l = data.length; i < l; i++) {
-                if (Array.isArray(data[i])) {
-                    symbol = this._getDataSymbol(data[i][1]);
-                    painter.addPolygon(data[i][0], symbol);
-                } else if (data[i].properties) {
-                    symbol = this._getDataSymbol(data[i].properties);
-                    painter.addPolygon(data[i], symbol);
-                }
-            }
-            var polygonArrays = this._polygonArrays = painter.getArrays();
-            this._polygonElementCount = polygonArrays.elementArray.length;
-        }
+        this._preparePolygonData();
+
         this._bufferPolygonData(this._polygonArrays);
 
         var m = this.calcMatrices();
-        gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
-        gl.uniform1fv(program.u_styles, this._uPolygonStyle);
+        gl.uniformMatrix4fv(gl.program['u_matrix'], false, m);
+        gl.uniform1fv(program['u_fill_styles'], this._uFillStyle);
         gl.drawElements(gl.TRIANGLES, this._polygonElementCount, gl.UNSIGNED_INT, 0);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+    };
+
+    _class.prototype._preparePolygonData = function _preparePolygonData() {
+        if (this._polygonArrays) {
+            return;
+        }
+        var gl = this.gl,
+            map = this.getMap();
+
+        var data = this.layer.data;
+        var painter = new PolygonPainter(gl, map);
+        var symbol = void 0;
+        for (var i = 0, l = data.length; i < l; i++) {
+            if (Array.isArray(data[i])) {
+                symbol = this.getDataSymbol(data[i][1]);
+                painter.addPolygon(data[i][0], symbol);
+            } else if (data[i].properties) {
+                symbol = this.getDataSymbol(data[i].properties);
+                painter.addPolygon(data[i], symbol);
+            }
+        }
+        var polygonArrays = this._polygonArrays = painter.getArrays();
+        this._polygonElementCount = polygonArrays.elementArray.length;
     };
 
     _class.prototype._bufferPolygonData = function _bufferPolygonData(polygonArrays) {
@@ -7996,7 +8137,7 @@ BigPolygonLayer.registerRenderer('webgl', function (_BigLineRenderer) {
         } else {
             gl.bindBuffer(gl.ARRAY_BUFFER, this._polygonTexBuffer);
         }
-        this.enableVertexAttrib([['a_style', 1, 'FLOAT']]);
+        this.enableVertexAttrib([['a_fill_style', 1, 'FLOAT']]);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
@@ -8010,17 +8151,323 @@ BigPolygonLayer.registerRenderer('webgl', function (_BigLineRenderer) {
     };
 
     _class.prototype.onRemove = function onRemove() {
+        delete this._polygonArrays;
         _BigLineRenderer.prototype.onRemove.apply(this, arguments);
     };
 
     return _class;
 }(BigLineRenderer));
 
+var options$5 = {
+    'project': true
+};
+
+var ExtrudePainter = function (_Painter) {
+    inherits(ExtrudePainter, _Painter);
+
+    function ExtrudePainter(gl, map, options) {
+        classCallCheck(this, ExtrudePainter);
+
+        var _this = possibleConstructorReturn(this, _Painter.call(this, gl, map, options));
+
+        _this.vertexArray = [];
+        _this.normalArray = [];
+        _this.elementArray = [];
+        _this.styleArray = [];
+        return _this;
+    }
+
+    ExtrudePainter.prototype.getArrays = function getArrays() {
+        return {
+            'vertexArray': this.vertexArray,
+            'normalArray': this.normalArray,
+            'elementArray': this.elementArray,
+            'styleArray': this.styleArray
+        };
+    };
+
+    ExtrudePainter.prototype.addPolygon = function addPolygon(polygon, height, style) {
+        if (!polygon) {
+            return this;
+        }
+        if (style.symbol['polygonOpacity'] <= 0) {
+            return this;
+        }
+
+        var vertice = this._getVertice(polygon);
+
+        if (vertice[0] && Array.isArray(vertice[0][0]) && Array.isArray(vertice[0][0][0])) {
+            for (var i = 0, l = vertice.length; i < l; i++) {
+                this.addPolygon(vertice[i], style);
+            }
+            return this;
+        }
+
+        this._fillArrays(vertice, height, style);
+        return this;
+    };
+
+    ExtrudePainter.prototype._fillArrays = function _fillArrays(vertice, height, style) {
+        var dimension = 3;
+
+        var targetZ = getTargetZoom(this.map);
+        var data = earcut_1.flatten(vertice);
+
+        var bottom = [];
+        var top = [];
+        var c = void 0;
+
+        for (var i = 0, l = data.vertices.length; i < l; i += 2) {
+            if (i === l - 1) {
+                if (this._equalCoord(data.vertices[i], data.vertices[0])) {
+                    continue;
+                }
+            }
+            if (this.options['project']) {
+                c = this.map.coordinateToPoint(new maptalks.Coordinate(data.vertices[i], data.vertices[i + 1]), targetZ);
+                bottom.push(c.x, c.y, 0);
+                top.push(c.x, c.y, height);
+            } else {
+                bottom.push(data.vertices[i], data.vertices[i + 1], 0);
+                top.push(data.vertices[i], data.vertices[i + 1], height);
+            }
+        }
+        data.vertices = bottom;
+        var triangles = earcut_1(data.vertices, data.holes, dimension);
+        if (triangles.length <= 2) {
+            return;
+        }
+        var deviation = earcut_1.deviation(data.vertices, data.holes, dimension, triangles);
+        if (Math.round(deviation * 1E3) / 1E3 !== 0) {
+            if (console) {
+                console.warn('Failed triangluation.');
+            }
+            return;
+        }
+
+        var count = bottom.length / dimension;
+
+        var preVertexCount = this.vertexArray.length;
+        var preCount = this.vertexArray.length / dimension;
+        if (preCount > 0) {
+            triangles = triangles.map(function (e) {
+                return e + preCount;
+            });
+        }
+
+        this.vertexArray.push.apply(this.vertexArray, bottom);
+
+        this.elementArray.push.apply(this.elementArray, triangles);
+
+        for (var _i = 0; _i < count; _i++) {
+            this.normalArray.push(0, 0, -1);
+        }
+
+        if (count > 0) {
+            triangles = triangles.map(function (e) {
+                return e + count;
+            });
+        }
+
+        this.vertexArray.push.apply(this.vertexArray, top);
+
+        this.elementArray.push.apply(this.elementArray, triangles);
+
+        for (var _i2 = 0; _i2 < count; _i2++) {
+            this.normalArray.push(0, 0, 1);
+        }
+
+        var vertexCount = this.vertexArray.length / dimension;
+        for (var _i3 = 0, _l = count; _i3 < _l - 1; _i3++) {
+            var ii = _i3 * dimension;
+            var normal = new index$1(bottom[ii + 3], bottom[ii + 4]).sub(new index$1(bottom[ii], bottom[ii + 1]))._unit()._perp();
+            this.vertexArray.push(bottom[ii], bottom[ii + 1], bottom[ii + 2]);
+            this.vertexArray.push(bottom[ii + 3], bottom[ii + 4], bottom[ii + 5]);
+            this.vertexArray.push(top[ii + 3], top[ii + 4], top[ii + 5]);
+            this.vertexArray.push(top[ii], top[ii + 1], top[ii + 2]);
+            for (var n = 0; n < 4; n++) {
+                this.normalArray.push(normal.x, normal.y, 0);
+            }
+            var ei = _i3 * 4;
+            this.elementArray.push(vertexCount + ei, vertexCount + ei + 1, vertexCount + ei + 2);
+            this.elementArray.push(vertexCount + ei, vertexCount + ei + 2, vertexCount + ei + 3);
+        }
+
+        this._addTexCoords(this.vertexArray.length - preVertexCount, style);
+    };
+
+    ExtrudePainter.prototype._getVertice = function _getVertice(geo) {
+        if (geo.geometry) {
+            geo = geo.geometry.coordinates;
+        } else if (geo.coordinates) {
+            geo = geo.coordinates;
+        }
+        return geo;
+    };
+
+    ExtrudePainter.prototype._addTexCoords = function _addTexCoords(n, style) {
+        var v = style.index * 100 + (style.symbol['polygonOpacity'] || 1) * 10;
+        for (var i = 0; i < n; i++) {
+            this.styleArray.push(v);
+        }
+    };
+
+    ExtrudePainter.prototype._equalCoord = function _equalCoord(c1, c2) {
+        return c1[0] === c2[0] && c1[1] === c2[1];
+    };
+
+    return ExtrudePainter;
+}(Painter);
+
+ExtrudePainter.mergeOptions(options$5);
+
+var ExtrudePolygonLayer = function (_BigDataLayer) {
+    inherits(ExtrudePolygonLayer, _BigDataLayer);
+
+    function ExtrudePolygonLayer() {
+        classCallCheck(this, ExtrudePolygonLayer);
+        return possibleConstructorReturn(this, _BigDataLayer.apply(this, arguments));
+    }
+
+    return ExtrudePolygonLayer;
+}(BigDataLayer);
+
+ExtrudePolygonLayer.registerJSONType('ExtrudePolygonLayer');
+
+var ExtrudeRenderer = function (_PathRenderer) {
+    inherits(ExtrudeRenderer, _PathRenderer);
+
+    function ExtrudeRenderer() {
+        classCallCheck(this, ExtrudeRenderer);
+        return possibleConstructorReturn(this, _PathRenderer.apply(this, arguments));
+    }
+
+    ExtrudeRenderer.prototype.onCanvasCreate = function onCanvasCreate() {
+        var uniforms = ['u_matrix', 'u_fill_styles', 'u_lightcolor', 'u_lightpos', 'u_ambientlight'];
+        this.program = this.createProgram(shaders.extrude.vertexSource, shaders.extrude.fragmentSource, uniforms);
+        _PathRenderer.prototype.onCanvasCreate.call(this);
+        var gl = this.gl;
+        gl.enable(gl.DEPTH_TEST);
+
+        gl.disable(gl.BLEND);
+        gl.disable(gl.STENCIL_TEST);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    };
+
+    ExtrudeRenderer.prototype.draw = function draw() {
+        this.prepareCanvas();
+        this._drawExtrudes();
+        this.completeRender();
+    };
+
+    ExtrudeRenderer.prototype.onRemove = function onRemove() {
+        delete this._extrudeArrays;
+        _PathRenderer.prototype.onRemove.apply(this, arguments);
+    };
+
+    ExtrudeRenderer.prototype.getTexture = function getTexture(symbol) {
+        return this.getFillTexture(symbol);
+    };
+
+    ExtrudeRenderer.prototype._drawExtrudes = function _drawExtrudes() {
+        var gl = this.gl,
+            program = this.program;
+        this.useProgram(program);
+        this._checkSprites();
+
+        this._prepareData();
+        var m = this.calcMatrices();
+        gl.uniformMatrix4fv(gl.program['u_matrix'], false, m);
+        gl.uniform1fv(program['u_fill_styles'], this._uFillStyle);
+
+        gl.uniform3fv(gl.program['u_lightpos'], vec3.normalize([], [0.5, 3.0, 4.0]));
+        gl.uniform3f(gl.program['u_lightcolor'], 1, 1, 1);
+        gl.uniform3f(gl.program['u_ambientlight'], 0.2, 0.2, 0.2);
+
+        this._bufferExtrudeData(this._extrudeArrays);
+        gl.drawElements(gl.TRIANGLES, this._elementCount, gl.UNSIGNED_INT, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+    };
+
+    ExtrudeRenderer.prototype._prepareData = function _prepareData() {
+        if (this._extrudeArrays) {
+            return;
+        }
+        var gl = this.gl,
+            map = this.getMap();
+        var targetZ = getTargetZoom(map);
+        var data = this.layer.data;
+        var painter = new ExtrudePainter(gl, map);
+        for (var i = 0, l = data.length; i < l; i++) {
+            if (Array.isArray(data[i])) {
+                var symbol = this.getDataSymbol(data[i][1]);
+                var height = data[i][1]['height'];
+                var pHeight = map.distanceToPixel(height, 0, targetZ).width;
+                painter.addPolygon(data[i][0], pHeight, symbol);
+            } else if (data[i].properties) {
+                var _symbol = this.getDataSymbol(data[i].properties);
+                var _height = data[i].properties['height'];
+                var _pHeight = map.distanceToPixel(_height, 0, targetZ).width;
+                painter.addPolygon(data[i], _pHeight, _symbol);
+            }
+        }
+        var extrudeArrays = this._extrudeArrays = painter.getArrays();
+        this._elementCount = extrudeArrays.elementArray.length;
+    };
+
+    ExtrudeRenderer.prototype._bufferExtrudeData = function _bufferExtrudeData(extrudeArrays) {
+        var gl = this.gl;
+
+        if (!this._vertexBuffer) {
+            var vertexBuffer = this._vertexBuffer = this.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(extrudeArrays.vertexArray), gl.STATIC_DRAW);
+        } else {
+            gl.bindBuffer(gl.ARRAY_BUFFER, this._vertexBuffer);
+        }
+        this.enableVertexAttrib(['a_pos', 3, 'FLOAT']);
+
+        if (!this._normalBuffer) {
+            var normalBuffer = this._normalBuffer = this.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(extrudeArrays.normalArray), gl.STATIC_DRAW);
+        } else {
+            gl.bindBuffer(gl.ARRAY_BUFFER, this._normalBuffer);
+        }
+        this.enableVertexAttrib(['a_normal', 3, 'FLOAT']);
+
+        if (!this._texBuffer) {
+            var texBuffer = this._texBuffer = this.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(extrudeArrays.styleArray), gl.STATIC_DRAW);
+        } else {
+            gl.bindBuffer(gl.ARRAY_BUFFER, this._texBuffer);
+        }
+        this.enableVertexAttrib([['a_fill_style', 1, 'FLOAT']]);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        if (!this._elementBuffer) {
+            var elementBuffer = this._elementBuffer = this.createBuffer();
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(extrudeArrays.elementArray), gl.STATIC_DRAW);
+        } else {
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._elementBuffer);
+        }
+    };
+
+    return ExtrudeRenderer;
+}(PathRenderer);
+
+ExtrudePolygonLayer.registerRenderer('webgl', ExtrudeRenderer);
+
 exports.webgl = index;
 exports.BigDataLayer = BigDataLayer;
 exports.BigPointLayer = BigPointLayer;
 exports.BigLineLayer = BigLineLayer;
 exports.BigPolygonLayer = BigPolygonLayer;
+exports.ExtrudePolygonLayer = ExtrudePolygonLayer;
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
