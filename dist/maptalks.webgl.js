@@ -4041,11 +4041,15 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
     WebglRenderer.prototype._initUniforms = function _initUniforms(program, uniforms) {
         for (var i = 0; i < uniforms.length; i++) {
             var name = uniforms[i];
+            var uniform = uniforms[i];
             var b = name.indexOf('[');
             if (b >= 0) {
                 name = name.substring(0, b);
+                if (!maptalks.Util.isNode) {
+                    uniform = uniform.substring(0, b);
+                }
             }
-            program[name] = this._getUniform(program, uniforms[i]);
+            program[name] = this._getUniform(program, uniform);
         }
     };
 
@@ -5612,7 +5616,7 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
 
     _class.prototype.onCanvasCreate = function onCanvasCreate() {
         var gl = this.gl;
-        var uniforms = ['u_matrix', 'u_scale', maptalks.Util.isNode ? 'u_sprite[0]' : 'u_sprite'];
+        var uniforms = ['u_matrix', 'u_scale', 'u_sprite[0]'];
         var program = this.createProgram(shaders.point.vertexSource, shaders.point.fragmentSource, uniforms);
         this.useProgram(program);
         var buffer = this.createBuffer();
@@ -7912,7 +7916,7 @@ var BigLineRenderer = function (_PathRenderer) {
     }
 
     BigLineRenderer.prototype.onCanvasCreate = function onCanvasCreate() {
-        var uniforms = ['u_matrix', 'u_scale', 'u_tex_size', 'u_styles'];
+        var uniforms = ['u_matrix', 'u_scale', 'u_tex_size', 'u_styles[0]'];
         this._lineProgram = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
         _PathRenderer.prototype.onCanvasCreate.call(this);
     };
@@ -8058,7 +8062,7 @@ BigPolygonLayer.registerRenderer('webgl', function (_BigLineRenderer) {
     }
 
     _class.prototype.onCanvasCreate = function onCanvasCreate() {
-        var uniforms = ['u_matrix', 'u_fill_styles'];
+        var uniforms = ['u_matrix', 'u_fill_styles[0]'];
         this._polygonProgram = this.createProgram(shaders.polygon.vertexSource, shaders.polygon.fragmentSource, uniforms);
         _BigLineRenderer.prototype.onCanvasCreate.call(this);
     };
@@ -8343,7 +8347,7 @@ var ExtrudeRenderer = function (_PathRenderer) {
     }
 
     ExtrudeRenderer.prototype.onCanvasCreate = function onCanvasCreate() {
-        var uniforms = ['u_matrix', 'u_fill_styles', 'u_lightcolor', 'u_lightpos', 'u_ambientlight'];
+        var uniforms = ['u_matrix', 'u_fill_styles[0]', 'u_lightcolor', 'u_lightpos', 'u_ambientlight'];
         this.program = this.createProgram(shaders.extrude.vertexSource, shaders.extrude.fragmentSource, uniforms);
         _PathRenderer.prototype.onCanvasCreate.call(this);
         var gl = this.gl;
