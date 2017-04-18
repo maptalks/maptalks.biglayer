@@ -14,7 +14,7 @@ ExtrudePolygonLayer.registerJSONType('ExtrudePolygonLayer');
 export class ExtrudeRenderer extends PathRenderer {
 
     onCanvasCreate() {
-        const uniforms = ['u_matrix', 'u_fill_styles', 'u_lightcolor', 'u_lightpos', 'u_ambientlight'/*'u_lightintensity'*/];
+        const uniforms = ['u_matrix', 'u_fill_styles[0]', 'u_lightcolor', 'u_lightpos', 'u_ambientlight'/*'u_lightintensity'*/];
         this.program = this.createProgram(shaders.extrude.vertexSource, shaders.extrude.fragmentSource, uniforms);
         super.onCanvasCreate();
         const gl = this.gl;

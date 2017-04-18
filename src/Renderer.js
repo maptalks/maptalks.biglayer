@@ -454,11 +454,16 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
     _initUniforms(program, uniforms) {
         for (let i = 0; i < uniforms.length; i++) {
             let name = uniforms[i];
+            let uniform = uniforms[i];
             const b = name.indexOf('[');
             if (b >= 0) {
-                name = name.substring(0, b);
+                name = name.substring(0, b);                
+                if (!maptalks.Util.isNode) {
+                    // In browser, remove [0] from uniforma declaration
+                    uniform = uniform.substring(0, b);
+                }
             }
-            program[name] = this._getUniform(program, uniforms[i]);
+            program[name] = this._getUniform(program, uniform);
         }
     }
 
