@@ -5639,12 +5639,23 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
             var gl = this.gl;
             var maxIconSize = [0, 0];
             for (var i = 0, l = data.length; i < l; i++) {
-                var tex = this._getTexCoord({ 'properties': data[i][2] });
+                if (!data[i]) {
+                    continue;
+                }
+                var point = void 0;
+                if (Array.isArray(data[i])) {
+                    point = data[i];
+                } else if (data[i].type) {
+                    var v = this._getVertice(data[i]);
+
+                    point = [v[0], v[1], data[i].properties];
+                }
+                var tex = this._getTexCoord({ 'properties': point[2] });
                 if (tex) {
                     this._vertexCount++;
-                    var cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), targetZ);
+                    var cp = map.coordinateToPoint(new maptalks.Coordinate(point), targetZ);
                     vertexTexCoords.push(cp.x, cp.y, tex.idx);
-                    points.push([cp.x, cp.y, tex.size, tex.offset, data[i]]);
+                    points.push([cp.x, cp.y, tex.size, tex.offset, point]);
 
                     if (tex.size[0] > maxIconSize[0]) {
                         maxIconSize[0] = tex.size[0];
@@ -5785,6 +5796,15 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
                 uSprite.push(this._sprites.offsets[i].x, this._sprites.offsets[i].y);
             }
         }
+    };
+
+    _class.prototype._getVertice = function _getVertice(point) {
+        if (point.geometry) {
+            point = point.geometry.coordinates;
+        } else if (point.coordinates) {
+            point = point.coordinates;
+        }
+        return point;
     };
 
     _class.prototype._drawMarkers = function _drawMarkers() {
@@ -7974,10 +7994,13 @@ var BigLineRenderer = function (_PathRenderer) {
         var painter = new LinePainter(gl, map);
         var symbol = void 0;
         for (var i = 0, l = data.length; i < l; i++) {
+            if (!data[i]) {
+                continue;
+            }
             if (Array.isArray(data[i])) {
                 symbol = this.getDataSymbol(data[i][1]);
                 painter.addLine(data[i][0], symbol);
-            } else if (data[i].properties) {
+            } else if (data[i].type) {
                 symbol = this.getDataSymbol(data[i].properties);
                 painter.addLine(data[i], symbol);
             }
@@ -8111,10 +8134,13 @@ BigPolygonLayer.registerRenderer('webgl', function (_BigLineRenderer) {
         var painter = new PolygonPainter(gl, map);
         var symbol = void 0;
         for (var i = 0, l = data.length; i < l; i++) {
+            if (!data[i]) {
+                continue;
+            }
             if (Array.isArray(data[i])) {
                 symbol = this.getDataSymbol(data[i][1]);
                 painter.addPolygon(data[i][0], symbol);
-            } else if (data[i].properties) {
+            } else if (data[i].type) {
                 symbol = this.getDataSymbol(data[i].properties);
                 painter.addPolygon(data[i], symbol);
             }
@@ -8404,12 +8430,15 @@ var ExtrudeRenderer = function (_PathRenderer) {
         var data = this.layer.data;
         var painter = new ExtrudePainter(gl, map);
         for (var i = 0, l = data.length; i < l; i++) {
+            if (!data[i]) {
+                continue;
+            }
             if (Array.isArray(data[i])) {
                 var symbol = this.getDataSymbol(data[i][1]);
                 var height = data[i][1]['height'];
                 var pHeight = map.distanceToPixel(height, 0, targetZ).width;
                 painter.addPolygon(data[i][0], pHeight, symbol);
-            } else if (data[i].properties) {
+            } else if (data[i].type) {
                 var _symbol = this.getDataSymbol(data[i].properties);
                 var _height = data[i].properties['height'];
                 var _pHeight = map.distanceToPixel(_height, 0, targetZ).width;

@@ -67,10 +67,13 @@ BigPolygonLayer.registerRenderer('webgl', class extends BigLineRenderer {
         const painter = new PolygonPainter(gl, map);
         let symbol;
         for (let i = 0, l = data.length; i < l; i++) {
+            if (!data[i]) {
+                continue;
+            }
             if (Array.isArray(data[i])) {
                 symbol = this.getDataSymbol(data[i][1]);
                 painter.addPolygon(data[i][0], symbol);
-            } else if (data[i].properties) {
+            } else if (data[i].type) {
                 //geojson
                 symbol = this.getDataSymbol(data[i].properties);
                 painter.addPolygon(data[i], symbol);

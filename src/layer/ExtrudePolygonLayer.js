@@ -74,12 +74,15 @@ export class ExtrudeRenderer extends PathRenderer {
         const data = this.layer.data;
         const painter = new ExtrudePainter(gl, map);
         for (let i = 0, l = data.length; i < l; i++) {
+            if (!data[i]) {
+                continue;
+            }
             if (Array.isArray(data[i])) {
                 const symbol = this.getDataSymbol(data[i][1]);
                 const height = data[i][1]['height'];
                 const pHeight = map.distanceToPixel(height, 0, targetZ).width;
                 painter.addPolygon(data[i][0], pHeight, symbol);
-            } else if (data[i].properties) {
+            } else if (data[i].type) {
                 //geojson
                 const symbol = this.getDataSymbol(data[i].properties);
                 const height = data[i].properties['height'];

@@ -75,12 +75,23 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
             const gl = this.gl;
             const maxIconSize = [0, 0];
             for (let i = 0, l = data.length; i < l; i++) {
-                const tex = this._getTexCoord({ 'properties' : data[i][2] });
+                if (!data[i]) {
+                    continue;
+                }
+                let point;
+                if (Array.isArray(data[i])) {
+                    point = data[i];
+                } else if (data[i].type) {
+                    const v = this._getVertice(data[i]);
+                    //geojson
+                    point = [v[0], v[1], data[i].properties];
+                }
+                const tex = this._getTexCoord({ 'properties' : point[2] });
                 if (tex) {
                     this._vertexCount++;
-                    const cp = map.coordinateToPoint(new maptalks.Coordinate(data[i]), targetZ);
+                    const cp = map.coordinateToPoint(new maptalks.Coordinate(point), targetZ);
                     vertexTexCoords.push(cp.x, cp.y, tex.idx);
-                    points.push([cp.x, cp.y, tex.size, tex.offset, data[i]]);
+                    points.push([cp.x, cp.y, tex.size, tex.offset, point]);
                     // find max size of icons, will use it for identify tolerance.
                     if (tex.size[0] > maxIconSize[0]) {
                         maxIconSize[0] = tex.size[0];
@@ -226,6 +237,17 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
                 uSprite.push(this._sprites.offsets[i].x, this._sprites.offsets[i].y);
             }
         }
+    }
+
+    _getVertice(point) {
+        if (point.geometry) {
+            //GeoJSON feature
+            point = point.geometry.coordinates;
+        } else if (point.coordinates) {
+            //GeoJSON geometry
+            point = point.coordinates;
+        }
+        return point;
     }
 
     _drawMarkers() {
