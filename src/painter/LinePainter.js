@@ -237,7 +237,7 @@ export default class LinePainter extends Painter {
         // joinNormal与线段normal的差值, joinNormal.x, joinNormal.y, normal.x, normal.y, linesofar
         const normals = [this._precise(normal.x), this._precise(normal.y), linesofar];
         const n = this.normalArray.length / normals.length;
-        Array.prototype.push.apply(this.normalArray, normals);
+        maptalks.Util.pushIn(this.normalArray, normals);
         return n;
     }
 

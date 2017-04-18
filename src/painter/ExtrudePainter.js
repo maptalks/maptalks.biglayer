@@ -118,9 +118,9 @@ export default class ExtrudePainter extends Painter {
             triangles = triangles.map(e => e + preCount);
         }
         // push bottom vertice
-        this.vertexArray.push.apply(this.vertexArray, bottom);
+        maptalks.Util.pushIn(this.vertexArray, bottom);
         // push bottom elements
-        this.elementArray.push.apply(this.elementArray, triangles);
+        maptalks.Util.pushIn(this.elementArray, triangles);
         // push bottom normals
         for (let i = 0; i < count; i++) {
             this.normalArray.push(0, 0, -1);
@@ -131,9 +131,9 @@ export default class ExtrudePainter extends Painter {
             triangles = triangles.map(e => e + count);
         }
         // push top vertice
-        this.vertexArray.push.apply(this.vertexArray, top);
+        maptalks.Util.pushIn(this.vertexArray, top);
         // push top elements
-        this.elementArray.push.apply(this.elementArray, triangles);
+        maptalks.Util.pushIn(this.elementArray, triangles);
         // push top normals
         for (let i = 0; i < count; i++) {
             this.normalArray.push(0, 0, 1);
