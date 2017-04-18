@@ -99,8 +99,8 @@ export default class PolygonPainter extends Painter {
         if (count > 0) {
             triangles = triangles.map(e => e + count);
         }
-        this.vertexArray.push.apply(this.vertexArray, data.vertices);
-        this.elementArray.push.apply(this.elementArray, triangles);
+        maptalks.Util.pushIn(this.vertexArray, data.vertices);
+        maptalks.Util.pushIn(this.elementArray, triangles);
 
         // 添加样式数据
         this._addTexCoords(data.vertices.length / 2, style);
