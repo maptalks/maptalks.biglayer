@@ -4484,7 +4484,7 @@ var LinePainter = function (_Painter) {
 
         var normals = [this._precise(normal.x), this._precise(normal.y), linesofar];
         var n = this.normalArray.length / normals.length;
-        Array.prototype.push.apply(this.normalArray, normals);
+        maptalks.Util.pushIn(this.normalArray, normals);
         return n;
     };
 
@@ -5192,8 +5192,8 @@ var PolygonPainter = function (_Painter) {
                 return e + count;
             });
         }
-        this.vertexArray.push.apply(this.vertexArray, data.vertices);
-        this.elementArray.push.apply(this.elementArray, triangles);
+        maptalks.Util.pushIn(this.vertexArray, data.vertices);
+        maptalks.Util.pushIn(this.elementArray, triangles);
 
         this._addTexCoords(data.vertices.length / 2, style);
         return this;
@@ -8285,9 +8285,9 @@ var ExtrudePainter = function (_Painter) {
             });
         }
 
-        this.vertexArray.push.apply(this.vertexArray, bottom);
+        maptalks.Util.pushIn(this.vertexArray, bottom);
 
-        this.elementArray.push.apply(this.elementArray, triangles);
+        maptalks.Util.pushIn(this.elementArray, triangles);
 
         for (var _i = 0; _i < count; _i++) {
             this.normalArray.push(0, 0, -1);
@@ -8299,9 +8299,9 @@ var ExtrudePainter = function (_Painter) {
             });
         }
 
-        this.vertexArray.push.apply(this.vertexArray, top);
+        maptalks.Util.pushIn(this.vertexArray, top);
 
-        this.elementArray.push.apply(this.elementArray, triangles);
+        maptalks.Util.pushIn(this.elementArray, triangles);
 
         for (var _i2 = 0; _i2 < count; _i2++) {
             this.normalArray.push(0, 0, 1);
