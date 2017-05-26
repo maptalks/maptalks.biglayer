@@ -1,10 +1,18 @@
 import * as maptalks from 'maptalks';
-import { mat4 } from 'gl-matrix';
+import { mat4 } from '@mapbox/gl-matrix';
 import { getTargetZoom } from './painter/Painter';
 
 const RADIAN = Math.PI / 180;
 
 export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
+
+    needToRedraw() {
+        const map = this.getMap();
+        if (map.isZooming() && !map.getPitch()) {
+            return false;
+        }
+        return super.needToRedraw();
+    }
 
     createCanvas() {
         if (this.canvas) {
@@ -23,7 +31,8 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         gl.verbose = true;
 
         // gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        // gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        gl.blendFunc(gl.ONE, gl.ONE);
         gl.enable(gl.BLEND);
         gl.disable(gl.DEPTH_TEST);
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
@@ -457,7 +466,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
             let uniform = uniforms[i];
             const b = name.indexOf('[');
             if (b >= 0) {
-                name = name.substring(0, b);                
+                name = name.substring(0, b);
                 if (!maptalks.Util.isNode) {
                     // In browser, remove [0] from uniforma declaration
                     uniform = uniform.substring(0, b);
@@ -471,7 +480,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         const gl = this.gl;
         const uniform = gl.getUniformLocation(program, uniformName);
         if (!uniform) {
-            throw new Error('Failed to get the storage location of ' + uniform);
+            throw new Error('Failed to get the storage location of ' + uniformName);
         }
         return uniform;
     }

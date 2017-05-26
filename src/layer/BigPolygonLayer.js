@@ -34,6 +34,14 @@ BigPolygonLayer.registerRenderer('webgl', class extends BigLineRenderer {
         this.completeRender();
     }
 
+    drawOnInteracting() {
+        this._drawPolygons();
+        this.gl.disable(this.gl.BLEND);
+        this._drawLines();
+        this.gl.enable(this.gl.BLEND);
+        this.completeRender();
+    }
+
     getTexture(symbol) {
         return this.getFillTexture(symbol);
     }

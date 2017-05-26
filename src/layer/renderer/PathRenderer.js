@@ -59,12 +59,12 @@ export default class PathRenderer extends WebglRenderer {
     getDataSymbol(props) {
         let count = -1;
         for (let i = 0, l = this.layer._cookedStyles.length; i < l; i++) {
-            let style = this.layer._cookedStyles[i];
-            let texture = this.getTexture(style.symbol);
+            const style = this.layer._cookedStyles[i];
+            const texture = this.getTexture(style.symbol);
             if (texture) {
                 count++;
             }
-            if (style.filter(props) === true) {
+            if (style.filter({ 'properties' : props }) === true) {
                 if (texture) {
                     return {
                         'symbol' : style.symbol,
@@ -88,7 +88,7 @@ export default class PathRenderer extends WebglRenderer {
     }
 
     getFillTexture(symbol) {
-        let fillPattern = symbol ? symbol['polygonPatternFile'] : null;
+        const fillPattern = symbol ? symbol['polygonPatternFile'] : null;
         if (fillPattern) {
             return this.resources.getImage(fillPattern);
         }
@@ -123,7 +123,7 @@ export default class PathRenderer extends WebglRenderer {
         this._fillSprites = this.mergeSprites(fillSprites);
 
         if (this._sprites && typeof (window) != 'undefined' && window.MAPTALKS_WEBGL_DEBUG_CANVAS) {
-            let debugCanvas = window.MAPTALKS_WEBGL_DEBUG_CANVAS;
+            const debugCanvas = window.MAPTALKS_WEBGL_DEBUG_CANVAS;
             debugCanvas.getContext('2d').fillRect(0, 0, debugCanvas.width, debugCanvas.height);
             debugCanvas.getContext('2d').fillStyle = 'rgb(255, 255, 255)';
             debugCanvas.getContext('2d').fillRect(0, 0, this._sprites.canvas.width, this._sprites.canvas.height);
@@ -148,8 +148,8 @@ export default class PathRenderer extends WebglRenderer {
         let counter = 0;
         const uStyle = this._uStyle = [];
         for (let i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
-            let style = this.layer._cookedStyles[i];
-            let texture = this.getLineTexture(style.symbol);
+            const style = this.layer._cookedStyles[i];
+            const texture = this.getLineTexture(style.symbol);
             if (texture) {
                 // 模式填充或有dasharray时, 添加三位纹理坐标
                 // 0: x坐标, 1: 纹理长度, 2: 纹理宽度, 3: -1
@@ -168,8 +168,8 @@ export default class PathRenderer extends WebglRenderer {
         counter = 0;
         const uFillStyle = this._uFillStyle = [];
         for (let i = 0, len = this.layer._cookedStyles.length; i < len; i++) {
-            let style = this.layer._cookedStyles[i];
-            let texture = this.getFillTexture(style.symbol);
+            const style = this.layer._cookedStyles[i];
+            const texture = this.getFillTexture(style.symbol);
             if (texture) {
                 // 模式填充或有dasharray时, 添加三位纹理坐标
                 // 0: x坐标, 1: 纹理长度, 2: 纹理宽度, 3: -1
@@ -178,7 +178,7 @@ export default class PathRenderer extends WebglRenderer {
             } else {
                 // 线是简单的颜色填充
                 // 0: r, 1: g, 2: b, 3: a
-                let color = style.symbol['polygonFill'] || '#ffffff';
+                let color = style.symbol['polygonFill'] || '#fff';
                 color = Color(color).rgbaArrayNormalized();
                 uFillStyle.push.apply(uFillStyle, color);
             }

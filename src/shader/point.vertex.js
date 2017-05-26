@@ -15,7 +15,7 @@ uniform float u_scale;
 uniform float u_sprite[${maxUniformLength}];
 varying vec3 v_texCoord;
 void main() {
-  int idx = int(a_sprite_idx);
+  int idx = int(a_sprite_idx) * 6;
   float size = u_sprite[idx + 3];
   vec2 textOffset = vec2(u_sprite[idx + 4], u_sprite[idx + 5]);
   vec4 pos = vec4(a_pos.x + textOffset.x * u_scale, a_pos.y + textOffset.y * u_scale, a_pos.z, a_pos.w);

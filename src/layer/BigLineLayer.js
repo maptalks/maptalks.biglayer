@@ -41,6 +41,11 @@ export class BigLineRenderer extends PathRenderer {
         this.completeRender();
     }
 
+    drawOnInteracting() {
+        this._drawLines();
+        this.completeRender();
+    }
+
     onRemove() {
         delete this._lineArrays;
         super.onRemove.apply(this, arguments);

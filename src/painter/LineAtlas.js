@@ -20,7 +20,7 @@ export default class LineAtlas {
         const key = JSON.stringify(symbol);
 
         if (!this.atlas[key]) {
-            let atlas = this.addAtlas(symbol);
+            const atlas = this.addAtlas(symbol);
             if (atlas) {
                 this.atlas[key] = atlas;
             }
@@ -76,7 +76,7 @@ export default class LineAtlas {
             h = (symbol['lineWidth'] == null ? 2 : symbol['lineWidth']);
         }
         if (symbol['linePatternFile']) {
-            let image = resources.getImage(symbol['linePatternFile']);
+            const image = resources.getImage(symbol['linePatternFile']);
             if (image.width > w) {
                 w = image.width;
             }

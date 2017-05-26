@@ -63,7 +63,7 @@ export default class ExtrudePainter extends Painter {
         //输入是MultiPolygon时, 遍历children, 并依次添加处理
         if (vertice[0] && Array.isArray(vertice[0][0]) && Array.isArray(vertice[0][0][0])) {
             for (let i = 0, l = vertice.length; i < l; i++) {
-                this.addPolygon(vertice[i], style);
+                this.addPolygon(vertice[i], height, style);
             }
             return this;
         }
@@ -112,7 +112,6 @@ export default class ExtrudePainter extends Painter {
 
         const count = bottom.length / dimension;
 
-        const preVertexCount = this.vertexArray.length;
         const preCount = this.vertexArray.length / dimension;
         if (preCount > 0) {
             triangles = triangles.map(e => e + preCount);
@@ -158,7 +157,7 @@ export default class ExtrudePainter extends Painter {
 
 
         // push styles
-        this._addTexCoords(this.vertexArray.length - preVertexCount, style);
+        this._addTexCoords(this.vertexArray.length / dimension - preCount, style);
     }
 
     _getVertice(geo) {

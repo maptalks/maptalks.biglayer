@@ -2,19 +2,28 @@ import shaders from '../shader/Shader';
 import ExtrudePainter from '../painter/ExtrudePainter';
 import BigDataLayer from './BigDataLayer';
 import PathRenderer from './renderer/PathRenderer';
-import { vec3 } from 'gl-matrix';
+import { vec3 } from '@mapbox/gl-matrix';
 import { getTargetZoom } from '../painter/Painter';
+
+const options = {
+    'lightPos' : [10, 0, 35],
+    'lightColor' : [1, 1, 1],
+    'lightIntensity' : 0.5,
+    'ambientLight' : [0.02, 0.02, 0.02]
+};
 
 export default class ExtrudePolygonLayer extends BigDataLayer {
 
 }
+
+ExtrudePolygonLayer.mergeOptions(options);
 
 ExtrudePolygonLayer.registerJSONType('ExtrudePolygonLayer');
 
 export class ExtrudeRenderer extends PathRenderer {
 
     onCanvasCreate() {
-        const uniforms = ['u_matrix', 'u_fill_styles[0]', 'u_lightcolor', 'u_lightpos', 'u_ambientlight'/*'u_lightintensity'*/];
+        const uniforms = ['u_matrix', 'u_fill_styles[0]', 'u_lightcolor', 'u_lightpos', 'u_ambientlight', 'u_lightintensity'];
         this.program = this.createProgram(shaders.extrude.vertexSource, shaders.extrude.fragmentSource, uniforms);
         super.onCanvasCreate();
         const gl = this.gl;
@@ -29,6 +38,11 @@ export class ExtrudeRenderer extends PathRenderer {
 
     draw() {
         this.prepareCanvas();
+        this._drawExtrudes();
+        this.completeRender();
+    }
+
+    drawOnInteracting() {
         this._drawExtrudes();
         this.completeRender();
     }
@@ -53,10 +67,17 @@ export class ExtrudeRenderer extends PathRenderer {
         gl.uniformMatrix4fv(gl.program['u_matrix'], false, m);
         gl.uniform1fv(program['u_fill_styles'], this._uFillStyle);
 
-        gl.uniform3fv(gl.program['u_lightpos'], vec3.normalize([], [0.5, 3.0, 4.0]));
-        gl.uniform3f(gl.program['u_lightcolor'], 1, 1, 1);
-        gl.uniform3f(gl.program['u_ambientlight'], 0.2, 0.2, 0.2);
-        // gl.uniform1f(gl.program['u_lightintensity'], 0.5);
+        const lightpos = this.layer.options['lightPos'] || [0, 0, 35];
+        gl.uniform3fv(gl.program['u_lightpos'], vec3.normalize([], lightpos));
+
+        const lightColor = this.layer.options['lightColor'] || [1, 1, 1];
+        gl.uniform3f(gl.program['u_lightcolor'], lightColor[0], lightColor[1], lightColor[2]);
+
+        const ambient = this.layer.options['ambientLight'] || [0.02, 0.02, 0.02];
+        gl.uniform3f(gl.program['u_ambientlight'], ambient[0], ambient[1], ambient[2]);
+
+        const lightIntensity = this.layer.options['lightIntensity'] || 0.5;
+        gl.uniform1f(gl.program['u_lightintensity'], lightIntensity);
         this._bufferExtrudeData(this._extrudeArrays);
         gl.drawElements(gl.TRIANGLES, this._elementCount, gl.UNSIGNED_INT, 0);
         // gl.drawElements(gl.LINES, this._elementCount, gl.UNSIGNED_INT, 0);
@@ -83,6 +104,9 @@ export class ExtrudeRenderer extends PathRenderer {
                 const pHeight = map.distanceToPixel(height, 0, targetZ).width;
                 painter.addPolygon(data[i][0], pHeight, symbol);
             } else if (data[i].type) {
+                if (data[i].properties.type === 'hospital') {
+                    console.log('got');
+                }
                 //geojson
                 const symbol = this.getDataSymbol(data[i].properties);
                 const height = data[i].properties['height'];
