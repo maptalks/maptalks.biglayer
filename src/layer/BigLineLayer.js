@@ -33,11 +33,9 @@ export class BigLineRenderer extends PathRenderer {
     }
 
     draw() {
-        console.time('draw lines');
         this.prepareCanvas();
 
         this._drawLines();
-        console.timeEnd('draw lines');
         this.completeRender();
     }
 

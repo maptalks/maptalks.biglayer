@@ -70,7 +70,6 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
     }
 
     draw() {
-        console.time('draw points');
         this.prepareCanvas();
         this._checkSprites();
 
@@ -117,7 +116,6 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         }
 
         this._drawMarkers();
-        console.timeEnd('draw points');
         this.completeRender();
     }
 
@@ -142,8 +140,14 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         const c = map.coordinateToPoint(coordinate, targetZ);
         // scale the icon size to the max zoom level.
         const scale = map.getScale() / map.getScale(targetZ);
-        const w = scale * this._maxIconSize[0],
+        let w = scale * this._maxIconSize[0],
             h = scale * this._maxIconSize[1];
+        if (w < 1) {
+            w = 1;
+        }
+        if (h < 1) {
+            h = 1;
+        }
         const ids = this._kdIndex.range(c.x - w, c.y - h, c.x + w, c.y + h);
         let filter, limit;
         if (options) {

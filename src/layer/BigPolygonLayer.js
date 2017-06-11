@@ -24,13 +24,11 @@ BigPolygonLayer.registerRenderer('webgl', class extends BigLineRenderer {
     }
 
     draw() {
-        console.time('draw polygons');
         this.prepareCanvas();
         this._drawPolygons();
         this.gl.disable(this.gl.BLEND);
         this._drawLines();
         this.gl.enable(this.gl.BLEND);
-        console.timeEnd('draw polygons');
         this.completeRender();
     }
 

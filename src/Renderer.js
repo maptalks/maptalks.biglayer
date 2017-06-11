@@ -296,6 +296,10 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         return uSampler;
     }
 
+    /**
+     * @deprecated
+     * @return {[type]} [description]
+     */
     _calcMatrices() {
         const map = this.getMap();
         const size = map.getSize(),
@@ -319,7 +323,9 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
 
     calcMatrices() {
         const map = this.getMap();
+        // get pixel size of map
         const size = map.getSize();
+        // get field of view
         const fov = map.getFov() * Math.PI / 180;
         const maxScale = map.getScale(map.getMinZoom()) / map.getScale(map.getMaxNativeZoom());
         const farZ = maxScale * size.height / 2 / this._getFovRatio();
@@ -357,7 +363,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         const cx = center2D.x + dist * Math.sin(bearing);
         const cy = center2D.y + dist * Math.cos(bearing);
 
-        // when map rotates, camera's up axis is pointing to south direction of map
+        // when map rotates, camera's up axis is pointing to bearing from south direction of map
         const up = [Math.sin(bearing), Math.cos(bearing), 0];
         const m = mat4.create();
         mat4.lookAt(m, [cx, cy, cz], [center2D.x, center2D.y, 0], up);

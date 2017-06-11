@@ -104,9 +104,6 @@ export class ExtrudeRenderer extends PathRenderer {
                 const pHeight = map.distanceToPixel(height, 0, targetZ).width;
                 painter.addPolygon(data[i][0], pHeight, symbol);
             } else if (data[i].type) {
-                if (data[i].properties.type === 'hospital') {
-                    console.log('got');
-                }
                 //geojson
                 const symbol = this.getDataSymbol(data[i].properties);
                 const height = data[i].properties['height'];
