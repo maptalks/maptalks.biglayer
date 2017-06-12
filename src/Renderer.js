@@ -364,9 +364,9 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         const cy = center2D.y + dist * Math.cos(bearing);
 
         // when map rotates, camera's up axis is pointing to bearing from south direction of map
-        // default [0,1,0] is the Y axis,while the angle of inclination always equal 0
+        // default [0,1,0] is the Y axis while the angle of inclination always equal 0
         // if you want to rotate the map after up an incline,please rotateZ like this:
-        // let up = new vec3(0,0,0);
+        // let up = new vec3(0,1,0);
         // up.rotateZ(target,radians); 
         const up = [Math.sin(bearing), Math.cos(bearing), 0];
         const m = mat4.create();
