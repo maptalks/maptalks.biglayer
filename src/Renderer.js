@@ -310,7 +310,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
 
         const m = mat4.create();
         mat4.perspective(m, fov, size.width / size.height, 1, cameraToCenterDistance + 1E9);
-        if (!maptalks.Util.isNode) {
+        if (!maptalks.Util.IS_NODE) {
             // doesn't need to flip Y with headless-gl, unknown reason
             mat4.scale(m, m, [1, -1, 1]);
         }
@@ -332,7 +332,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         const m = mat4.create();
         mat4.perspective(m, fov, size.width / size.height, 1, farZ);
         const m1 = mat4.create();
-        if (!maptalks.Util.isNode) {
+        if (!maptalks.Util.IS_NODE) {
             // doesn't need to flip Y with headless-gl, unknown reason
             mat4.scale(m, m, [1, -1, 1]);
         }
@@ -473,7 +473,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
             const b = name.indexOf('[');
             if (b >= 0) {
                 name = name.substring(0, b);
-                if (!maptalks.Util.isNode) {
+                if (!maptalks.Util.IS_NODE) {
                     // In browser, remove [0] from uniforma declaration
                     uniform = uniform.substring(0, b);
                 }
