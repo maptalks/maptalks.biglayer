@@ -4,6 +4,19 @@ import { getTargetZoom } from './painter/Painter';
 
 const RADIAN = Math.PI / 180;
 
+function setupBlend(gl, compOp) {
+    // gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    // gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    // gl.blendFunc(gl.ONE, gl.ONE);
+    switch (compOp) {
+    case 'source-over':
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+    default:
+        break;
+    }
+}
+
 export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
 
     needToRedraw() {
@@ -24,18 +37,17 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         const r = maptalks.Browser.retina ? 2 : 1;
         this.canvas = maptalks.Canvas.createCanvas(r * size['width'], r * size['height'], map.CanvasClass);
         const gl = this.gl = this._createGLContext(this.canvas, this.layer.options['glOptions']);
-        gl.clearColor(0.0, 0.0, 0.0, 0.0);
-        // gl.blendFuncSeparate( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA,
-        //                  gl.ZERO, gl.ONE );
-        //
-        gl.verbose = true;
 
-        // gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        // gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-        gl.blendFunc(gl.ONE, gl.ONE);
+        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+
         gl.enable(gl.BLEND);
+        const compOp = this.layer.options['globalCompositeOperation'] || 'source-over';
+        setupBlend(gl, compOp);
+
         gl.disable(gl.DEPTH_TEST);
+
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+
         if (this.onCanvasCreate) {
             this.onCanvasCreate();
         }
@@ -367,7 +379,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         // default [0,1,0] is the Y axis while the angle of inclination always equal 0
         // if you want to rotate the map after up an incline,please rotateZ like this:
         // let up = new vec3(0,1,0);
-        // up.rotateZ(target,radians); 
+        // up.rotateZ(target,radians);
         const up = [Math.sin(bearing), Math.cos(bearing), 0];
         const m = mat4.create();
         mat4.lookAt(m, [cx, cy, cz], [center2D.x, center2D.y, 0], up);
