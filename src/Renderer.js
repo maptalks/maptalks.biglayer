@@ -5,12 +5,15 @@ import { getTargetZoom } from './painter/Painter';
 const RADIAN = Math.PI / 180;
 
 function setupBlend(gl, compOp) {
-    // gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    // gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-    // gl.blendFunc(gl.ONE, gl.ONE);
     switch (compOp) {
     case 'source-over':
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+    case 'lighter':
+        gl.blendFunc(gl.ONE, gl.ONE);
+        break;
+    case 'copy':
+        gl.blendFunc(gl.ONE, gl.ZERO);
         break;
     default:
         break;
