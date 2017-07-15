@@ -4,20 +4,44 @@ import { getTargetZoom } from './painter/Painter';
 
 const RADIAN = Math.PI / 180;
 
+// https://www.w3.org/TR/compositing/#porterduffcompositingoperators
 function setupBlend(gl, compOp) {
     switch (compOp) {
     case 'source-over':
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         break;
-    // case 'destination-over':
-    //     gl.blendEquation(gl.FUNC_REVERSE_SUBTRACT);
-    //     gl.blendFunc(gl.ONE_MINUS_DST_ALPHA, gl.ONE);
-    //     break;
+    case 'destination-over':
+        gl.blendFunc(gl.ONE_MINUS_DST_ALPHA, gl.ONE);
+        break;
+    case 'source-in':
+        gl.blendFunc(gl.DST_ALPHA, gl.ZERO);
+        break;
+    case 'destination-in':
+        gl.blendFunc(gl.ZERO, gl.SRC_ALPHA);
+        break;
+    case 'source-out':
+        gl.blendFunc(gl.ONE_MINUS_DST_ALPHA, gl.ZERO);
+        break;
+    case 'destination-out':
+        gl.blendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+    case 'source-atop':
+        gl.blendFunc(gl.DST_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+    case 'destination-atop':
+        gl.blendFunc(gl.ONE_MINUS_DST_ALPHA, gl.SRC_ALPHA);
+        break;
+    case 'xor':
+        gl.blendFunc(gl.ONE_MINUS_DST_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        break;
     case 'lighter':
         gl.blendFunc(gl.ONE, gl.ONE);
         break;
     case 'copy':
         gl.blendFunc(gl.ONE, gl.ZERO);
+        break;
+    case 'destination':
+        gl.blendFunc(gl.ZERO, gl.ONE);
         break;
     case 'multiply':
         gl.blendFunc(gl.DST_COLOR, gl.ZERO);
