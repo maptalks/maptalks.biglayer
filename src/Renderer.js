@@ -9,13 +9,24 @@ function setupBlend(gl, compOp) {
     case 'source-over':
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         break;
+    // case 'destination-over':
+    //     gl.blendEquation(gl.FUNC_REVERSE_SUBTRACT);
+    //     gl.blendFunc(gl.ONE_MINUS_DST_ALPHA, gl.ONE);
+    //     break;
     case 'lighter':
         gl.blendFunc(gl.ONE, gl.ONE);
         break;
     case 'copy':
         gl.blendFunc(gl.ONE, gl.ZERO);
         break;
+    case 'multiply':
+        gl.blendFunc(gl.DST_COLOR, gl.ZERO);
+        break;
+    case 'screen':
+        gl.blendFunc(gl.ONE_MINUS_DST_COLOR, gl.ONE);
+        break;
     default:
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         break;
     }
 }
