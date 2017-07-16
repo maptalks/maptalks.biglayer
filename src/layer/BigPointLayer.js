@@ -5,10 +5,6 @@ import shaders from '../shader/Shader';
 import kdbush from 'kdbush';
 import { getTargetZoom } from '../painter/Painter';
 
-const options = {
-    'blendEquation' : 'add'
-};
-
 export default class BigPointLayer extends BigDataLayer {
     identify(coordinate, options) {
         const renderer = this._getRenderer();
@@ -18,8 +14,6 @@ export default class BigPointLayer extends BigDataLayer {
         return renderer.identify(coordinate, options);
     }
 }
-
-BigPointLayer.mergeOptions(options);
 
 BigPointLayer.registerJSONType('BigPointLayer');
 
@@ -55,9 +49,6 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
 
     onCanvasCreate() {
         const gl = this.gl;
-        this._setBlendEquation();
-        // gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
-        // gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         const uniforms = ['u_matrix', 'u_scale', 'u_sprite[0]'];
         const program = this.createProgram(shaders.point.vertexSource, shaders.point.fragmentSource, uniforms);
         this.useProgram(program);
@@ -289,22 +280,5 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
 
     _onStyleChanged() {
         this._needCheckStyle = true;
-    }
-
-    _setBlendEquation() {
-        let blend = this.layer.options['blendEquation'];
-        if (!blend) {
-            return;
-        }
-        const gl = this.gl;
-        blend = blend.toLowerCase();
-        if (blend === 'add') {
-            gl.blendEquation(gl.FUNC_ADD);
-        } else if (blend === 'subtract') {
-            gl.blendEquation(gl.FUNC_SUBTRACT);
-        } else if (blend === 'reverse_substract') {
-            gl.blendEquation(gl.FUNC_REVERSE_SUBTRACT);
-        }
-
     }
 });
