@@ -43,12 +43,12 @@ function setupBlend(gl, compOp) {
     case 'destination':
         gl.blendFunc(gl.ZERO, gl.ONE);
         break;
-    case 'multiply':
-        gl.blendFunc(gl.DST_COLOR, gl.ZERO);
-        break;
-    case 'screen':
-        gl.blendFunc(gl.ONE_MINUS_DST_COLOR, gl.ONE);
-        break;
+    // case 'multiply':
+    //     gl.blendFunc(gl.DST_COLOR, gl.ZERO);
+    //     break;
+    // case 'screen':
+    //     gl.blendFunc(gl.ONE_MINUS_DST_COLOR, gl.ONE);
+    //     break;
     default:
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         break;
