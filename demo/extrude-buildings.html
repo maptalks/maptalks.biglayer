@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style type="text/css">
+        html,body{ margin:0px; height:100%; }
+    </style>
+    <title>Buildings Extrusion</title>
+</head>
+<body scroll="no">
+<div id="mapObj" style="width:100%;height:100%;float:right;margin-top:0px"></div>
+<!-- 引擎javascript开发包-->
+<script type="text/javascript" src="http://localhost:20000/maptalks.js"></script>
+<script type="text/javascript" src="../dist/maptalks.webgl.js"></script>
+<script type="text/javascript" src="data/mini-buildings.js"></script>
+<script type="text/javascript" >
+  var center = [-74.09346574928561, 40.6315742625236];
+  var map = new maptalks.Map('mapObj',
+  {
+      center:  center,
+      zoom:   15,
+      pitch : 38,
+      baseLayer : new maptalks.TileLayer('tile',
+          {
+            'urlTemplate' : 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png',
+            'subdomains'  : ['a','b','c','d','e']
+          }),
+      attribution : {
+        content : '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      }
+  });
+
+  var symbol = {
+      'polygonOpacity' : 1,
+      'polygonFill' : 'rgba(0, 255, 0, 1)'
+  };
+
+  buildings.features.forEach(function (f) {
+    let height = 20;
+    const type = f.properties.type;
+    if (type === 'ruins') {
+      height = 5;
+    } else if (type === 'storage_tank') {
+      height = 50;
+    } else if (type === 'hospital') {
+      height = 80;
+    } else if (type === 'place_of_worship') {
+      height = 120;
+    } else if (type === 'garage') {
+      height = 60;
+    }
+    f.properties.height = height;
+  });
+
+  var l2013 = new maptalks.ExtrudePolygonLayer('2013', buildings.features, {
+    'renderOnMoving' : true,
+    'ambientLight' : [0, 0, 0]
+  })
+  .setStyle([
+    {
+      filter : ['==', 'type', 'ruins'],
+      symbol : { 'polygonFill' : '#bbb' }
+    },
+    {
+      filter : ['==', 'type', 'storage_tank'],
+      symbol : { 'polygonFill' : 'rgba(0, 255, 0, 1)' }
+    },
+    {
+      filter : ['==', 'type', 'hospital'],
+      symbol : { 'polygonFill' : 'rgba(255, 255, 0, 1)' }
+    },
+    {
+      filter : ['==', 'type', 'place_of_worship'],
+      symbol : { 'polygonFill' : 'rgba(0, 255, 255, 1)' }
+    },
+    {
+      filter : ['==', 'type', 'garage'],
+      symbol : { 'polygonFill' : 'rgba(0, 255, 255, 1)' }
+    },
+    {
+      filter : true,
+      symbol : { 'polygonFill' : '#bbb' }
+    }
+  ])
+  .addTo(map);
+
+</script>
+</body>
+</html>

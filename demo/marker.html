@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script type="text/javascript" src="js/tiger.js"></script>
+    <script type="text/javascript" src="js/symbols.js"></script>
+    <style type="text/css">
+        html,body{ margin:0px; height:100%; };
+    </style>
+    <title>WEBGL Symbol测试</title>
+</head>
+<body scroll="no" onload="initMap();">
+<div  style="width:80%;height:100%;float:right;margin-top:0px">
+    <div id="map" style="width:100%;height:60%;float:right;margin-top:0px"></div>
+    <canvas id="texture" width=800 height = 600 style="width:800;height:600;float:right;margin-top:0px;border:1px solid;"></canvas>
+</div>
+<div style="width:20%;height:100%;float:right;margin-top:0px">
+<br><br><br><br>
+<a href="javascript:hideV();">隐藏</a> <br>
+<a href="javascript:showV();">显示</a>
+</div>
+
+<script type="text/javascript" >
+    var map, vLayer, pointLayer;
+    function initMap(){
+        window.MAPTALKS_WEBGL_DEBUG_CANVAS = document.getElementById('texture');
+
+        //创建地图对象
+        map = new maptalks.Map('map', //放置map的div id
+        {
+            center:  new maptalks.Coordinate(110.37177093749999, 34.81813283501007), //初始中心点坐标
+            zoom:   5, //初始缩放级别
+            // maxZoom : 5,
+            baseLayer : new maptalks.TileLayer('tile', //底图id
+                {
+                    urlTemplate:'http://map.geoq.cn/ArcGIS/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}',
+                    subdomains:['a','b']//地图服务url子域名变量,对应urlTemplate中占位符{s}的值
+                    // 'urlTemplate' : 'http://t{s}.tianditu.com/DataServer?T=cva_w&x={x}&y={y}&l={z}',
+                    // 'subdomains'  : ['1','2','3','4','5']
+                })
+        });
+        var extent = map.getExtent(),
+            min = extent.getMin(),
+            w = extent.getWidth(),
+            h = extent.getHeight();
+
+        var style = [];
+        var geometries = [];
+        var points = [];
+        for (var i = 0; i < symbols.length; i++) {
+            style.push({
+                filter : ['==', 'order', i],
+                symbol : symbols[i]
+            });
+            var c = [min.x + w / 4 + Math.random() * w / 2, min.y + h / 4 + Math.random() * h / 2];
+            var properties = {
+                'order' : i
+            };
+            points.push(c.concat([properties]));
+            geometries.push(new maptalks.Marker(c, {
+                'properties' : properties
+            }));
+        }
+
+
+        vLayer = new maptalks.VectorLayer('v')
+        .setStyle(style)
+        .addGeometry(geometries)
+        .addTo(map);
+
+        pointLayer = new maptalks.BigPointLayer('b', points)
+        .setStyle(style)
+        .addTo(map);
+    }
+
+    function showV() {
+        vLayer.show();
+    }
+
+    function hideV() {
+        vLayer.hide();
+    }
+</script>
+<!-- 引擎javascript开发包-->
+<script type="text/javascript" src="../../maptalks.js"></script>
+<script type="text/javascript" src="../../plugins/maptalks.webgl.js"></script>
+</body>
+</html>

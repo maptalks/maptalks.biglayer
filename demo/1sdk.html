@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style type="text/css">
+        html,body{ margin:0px; height:100%; };
+    </style>
+    <title>注册用户分布</title>
+</head>
+<body scroll="no" onload="initMap();">
+<div id="mapObj" style="width:100%;height:100%;float:right;margin-top:0px"></div>
+<script type="text/javascript" >
+    var map, l2013, l2014, l2015;
+    function initMap(){
+        //创建地图对象
+        map = new maptalks.Map('mapObj',
+        {
+            center:  [110.37177, 34.81813],
+            zoom:   5,
+            baseLayer : new maptalks.TileLayer('tile',
+                {
+                  'urlTemplate' : 'http://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png',
+                  'subdomains'  : ['a','b','c','d','e']
+                })
+        });
+
+        var symbol = {
+            'markerType' : 'square',
+            'markerWidth' : 0.5,
+            'markerHeight' : 0.5,
+            'markerFill' :'rgba(86, 197, 234, 0.1)',/* {
+                    type : 'radial',
+                    colorStops : [
+                        [0.00, 'rgba(86, 197, 234, 0)'],
+                        [1.00, 'rgba(86, 197, 234, 0.2)']
+                    ]
+                },*/
+            'markerLineOpacity' : 0
+        };
+        var data = data2014;
+        console.log(data.length);
+        l2015 = new maptalks.BigPointLayer('2015', data.map(function (d) { d.push(1); return d; }))
+            .setStyle({
+                filter : true,
+                symbol : symbol
+            })
+            .addTo(map);
+
+        map.on('click', function (e) {
+          map.identify({
+            'coordinate' : e.coordinate,
+            'layers' : [l2015],
+            //'count'  : 5 // 限制返回结果条数
+          }, function (r) {
+            alert('点选了' + r.length + '条数据');
+          })
+        });
+    }
+
+</script>
+<!-- 引擎javascript开发包-->
+<script type="text/javascript" src="data/2014.js"></script>
+<script type="text/javascript" src="http://localhost:20000/maptalks.js"></script>
+<script type="text/javascript" src="../dist/maptalks.webgl.js"></script>
+</body>
+</html>

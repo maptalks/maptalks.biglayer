@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style type="text/css">
+        html,body{ margin:0px; height:100%; };
+    </style>
+    <title>MapTalks 示例: 标注矢量图形</title>
+</head>
+<body scroll="no" onload="initMap();">
+<div id="mapObj" style="width:100%;height:100%;float:right;margin-top:0px"></div>
+<script type="text/javascript" >
+    var mapObj,pointLayer;
+    function initMap(){
+        //创建地图对象
+        mapObj = new maptalks.Map('mapObj', //放置mapObj的div id
+        {
+            center:  new maptalks.Coordinate(110.37177093749999, 34.81813283501007), //初始中心点坐标
+            zoom:   5, //初始缩放级别
+            // maxZoom : 5,
+            baseLayer : new maptalks.TileLayer('tile', //底图id
+                {
+                    urlTemplate:'http://map.geoq.cn/ArcGIS/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}',
+                    subdomains:['a','b']//地图服务url子域名变量,对应urlTemplate中占位符{s}的值
+                })
+        });
+
+        //创建图层
+        pointLayer = new maptalks.SimpleMarkerLayer('layer', {tolerance : 0, geometryEvents:false, drawOnce:false});
+        pointLayer.setStyle({
+            filter : true,
+            symbol : {
+                'markerType': 'square',
+                'markerLineColor': '#fff',
+                'markerLineWidth': 0,
+                'markerPlacement': 'point',
+                'markerWidth': 2,
+                'markerHeight': 2,
+                'markerFill': '#fff',
+                // 'markerFill': 'rgba(37, 140, 249, 0.5)',
+                //
+                // 'markerFill' : {
+                //     type : 'radial',
+                //     colorStops : [
+                //         [0.00, 'rgba(88, 144, 181, 0)'],
+                //         [1.00, 'rgba(88, 144, 181, 1)'],
+                //     ]
+                // },
+                'markerFillOpacity' : 0.5
+            }
+        })
+        //将图层添加到地图对象
+        mapObj.addLayer(pointLayer);
+        //创建点的坐标对象
+
+        var geometries = [];
+        var index = 0;
+        maptalks.Util.mapArrayRecursively(china, function(coord) {
+            // index++;
+            // if (index > 30000) {
+            //     return;
+            // }
+            geometries.push(new maptalks.Marker(coord.geoCoord));
+        });
+        pointLayer.clear().addGeometry(geometries);
+        console.log(pointLayer.getCount());
+    }
+
+</script>
+<!-- 引擎javascript开发包-->
+<script type="text/javascript" src="../../maptalks.js"></script>
+<script type="text/javascript" src="../../plugins/maptalks.webgl.js"></script>
+<script type="text/javascript" src="../../plugins/maptalks.bigpoint.js"></script>
+<script type="text/javascript" src="../weibo/china.json"></script>
+<!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+<!--[if lt IE 9]>
+  <script src="http://cdn.bootcss.com/html5shiv/3.7.0/html5shiv.min.js"></script>
+<![endif]-->
+</body>
+</html>

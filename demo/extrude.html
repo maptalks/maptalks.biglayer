@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style type="text/css">
+        html,body{ margin:0px; height:100%; };
+    </style>
+    <title>webgl面图层</title>
+    <script type="text/javascript" src="http://localhost:20000/maptalks.js"></script>
+    <script type="text/javascript" src="../dist/maptalks.webgl.js"></script>
+</head>
+<body scroll="no">
+<div id="mapObj" style="width:100%;height:80%;float:right;margin-top:0px"></div>
+<canvas id="texture" width=800 height = 600 style="width:800;height:600;float:right;margin-top:0px;border:1px solid;"></canvas>
+
+<script type="text/javascript" >
+    window.MAPTALKS_WEBGL_DEBUG_CANVAS = document.getElementById('texture');
+    var map, l2013, l2014, l2015;
+    var ring = [];
+    initMap();
+    function initMap(){
+        var center = [113.680673122406, 34.76302653782608]; //[108.23074564236198, 51.98293522457652];//
+        //创建地图对象
+        map = new maptalks.Map('mapObj', //放置mapObj的div id
+        {
+            center:  center, //初始中心点坐标
+            zoom:   14, //初始缩放级别
+            pitch : 60,
+            bearing : -44,
+            // baseLayer : new maptalks.TileLayer('tile', //底图id
+            //     {
+            //       urlTemplate: 'http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+            //       subdomains: ['a','b','c','d','e']
+            //     })
+        });
+
+        var symbol = {
+            'lineColor' : 'rgba(255, 0, 0, 1)',
+            'polygonOpacity' : 1,
+            'polygonFill' : 'rgba(255, 0, 0, 1)'
+            // 'lineDasharray' : [20, 30, 20, 20],
+            // 'linePatternFile' : '../images/man.png'
+        };
+
+        var data = [
+            /*[
+              [[[113.68037271499634,34.76365232410749],[113.68028688430786,34.762577026442784],[113.68387031555176,34.762136326632046],[113.6842565536499,34.76428691943561],[113.68258285522462,34.764375057289804],[113.6824541091919,34.76365232410749]]],
+              {'type' : 0, 'height' : 200}
+            ],
+            [
+              [[[113.67602753639221,34.761237291723205],[113.67598462104797,34.759333420774084],[113.67984700202942,34.75898084726182],[113.67997574806213,34.761131522266744],[113.67997574806213,34.761131522266744]]],
+              {'type' : 0, 'height' : 200}
+            ],
+            [
+              [[[113.6702983379364,34.760285361736656],[113.66780924797058,34.75841672651049],[113.66862463951112,34.75813466468949],[113.67252993583679,34.75767631217521],[113.67308783531189,34.75965073564781],[113.67068457603455,34.75989753526201]]],
+              {'type' : 0, 'height' : 300}
+            ]*/
+            [[[[113.6784710288048, 34.764743031814376],[113.68287521600723, 34.764743031814376],[113.68287521600723, 34.76131000814593],[113.6784710288048, 34.76131000814593], [113.6784710288048, 34.764743031814376]]],
+              // [[[[108.18592099381434,52.02373364740628],[108.29182431303198,52.02373364740628],[108.29182431303198,51.9587603459299],[108.18592099381434,51.9587603459299],[108.18592099381434,52.02373364740628]]],
+              {'type' : 0, 'height' : 300}]
+        ];
+
+        l2013 = new maptalks.ExtrudePolygonLayer('2013', data, {'renderOnMoving' : true, 'renderOnZooming' : true})
+            .setStyle([
+                {
+                    filter : true,
+                    symbol : symbol
+                }
+            ])
+            .addTo(map);
+
+        // new maptalks.VectorLayer('v')
+        // .addGeometry(new maptalks.Polygon(data[0][0], {
+        //     symbol : {
+        //         lineColor : '#fff'
+        //     }
+        // }))
+        // .addTo(map);
+
+        map.on('click', function (e) {
+          ring.push(e.coordinate.toArray());
+        })
+    }
+
+</script>
+<!-- 引擎javascript开发包-->
+<!-- <script type="text/javascript" src="data/2015.json"></script> -->
+</body>
+</html>

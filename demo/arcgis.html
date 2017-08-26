@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style type="text/css">
+        html,body{ margin:0px; height:100%; };
+    </style>
+    <!-- 引擎javascript开发包-->
+    <script type="text/javascript" src="data/zhai.js"></script>
+    <script type="text/javascript" src="data/cun.js"></script>
+    <script type="text/javascript" src="data/gou.js"></script>
+    <script type="text/javascript" src="data/ling.js"></script>
+    <script type="text/javascript" src="arcgis.js"></script>
+    <script type="text/javascript" src="http://localhost:20000/maptalks.js"></script>
+    <script type="text/javascript" src="../dist/maptalks.webgl.js"></script>
+    <title>注册用户分布</title>
+</head>
+<body scroll="no">
+<div id="mapObj" style="width:100%;height:100%;float:right;margin-top:0px"></div>
+<script type="text/javascript" >
+  maptalks.SpatialReference.loadArcgis(arcRef, initMap);
+  var map, l2013, l2014, l2015;
+  function initMap(err, conf){
+      var ref = conf.spatialReference;
+      ref.projection = 'EPSG:4326';
+      //Visualization and data are from
+      //http://blog.geohey.com/-chong-ku-xuan-de-kong-jian-mi-du-ke-shi-hua-fang-shi-yi-zhong-guo-cun-zhuang-kong-jian-fen-bu-wei-li/
+      map = new maptalks.Map('mapObj',
+      {
+          center:  [114.29925965197117, 30.59531760776278],
+          zoom:   3,
+          spatialReference : ref,
+          // baseLayer : new maptalks.TileLayer('tile',
+          //     {
+          //       'urlTemplate' : 'http://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png',
+          //       'subdomains'  : ['a','b','c','d','e']
+          //     })
+      });
+
+      zhai.features.forEach(function (f) { f.properties = {'type' : 2}});
+      cun.features.forEach(function (f) { f.properties = {'type' : 1}});
+      gou.features.forEach(function (f) { f.properties = {'type' : 3}});
+      ling.features.forEach(function (f) { f.properties = {'type' : 4}});
+
+      var data = [];
+      maptalks.Util.pushIn(data, cun.features);
+      maptalks.Util.pushIn(data, zhai.features);
+      maptalks.Util.pushIn(data, gou.features);
+      maptalks.Util.pushIn(data, ling.features);
+
+      l2015 = new maptalks.BigPointLayer('big', data, {'blendEquation' : 'add'})
+          .setStyle(
+              [
+                {
+                  filter : ['==', 'type', 1],
+                  symbol : {
+                      'markerType' : 'ellipse',
+                      'markerWidth' : 5,
+                      'markerHeight' : 5,
+                      'markerFill' :'#f00',
+                      'markerLineOpacity' : 0
+                  }
+                },
+                {
+                  filter : ['==', 'type', 4],
+                  symbol : {
+                      'markerType' : 'ellipse',
+                      'markerWidth' : 5,
+                      'markerHeight' : 5,
+                      'markerFill' :'#0f0',
+                      'markerLineOpacity' : 0
+                  }
+                },
+                {
+                  filter : ['==', 'type', 2],
+                  symbol : {
+                      'markerType' : 'ellipse',
+                      'markerWidth' : 5,
+                      'markerHeight' : 5,
+                      'markerFill' :'#ff0',
+                      'markerLineOpacity' : 0
+                  }
+                },
+                {
+                  filter : ['==', 'type', 3],
+                  symbol : {
+                      'markerType' : 'ellipse',
+                      'markerWidth' : 5,
+                      'markerHeight' : 5,
+                      'markerFill' :'#00f',
+                      'markerLineOpacity' : 0
+                  }
+                }
+              ])
+          .addTo(map);
+
+      map.on('click', function (e) {
+        map.identify({
+          'coordinate' : e.coordinate,
+          'layers' : [l2015],
+          //'count'  : 5 // 限制返回结果条数
+        }, function (r) {
+          alert('点选了' + r.length + '条数据');
+        })
+      });
+  }
+
+</script>
+
+</body>
+</html>

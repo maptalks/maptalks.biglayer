@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style type="text/css">
+        html,body{ margin:0px; height:100%; };
+    </style>
+    <title>webgl面图层</title>
+    <script type="text/javascript" src="http://localhost:20000/maptalks.js"></script>
+    <script type="text/javascript" src="../dist/maptalks.webgl.js"></script>
+</head>
+<body scroll="no">
+<div id="mapObj" style="width:100%;height:80%;float:right;margin-top:0px"></div>
+<canvas id="texture" width=800 height = 600 style="width:800;height:600;float:right;margin-top:0px;border:1px solid;"></canvas>
+
+<script type="text/javascript" >
+    window.MAPTALKS_WEBGL_DEBUG_CANVAS = document.getElementById('texture');
+    var map, l2013, l2014, l2015;
+    var ring = [];
+    initMap();
+    function initMap(){
+        var center = [128, 35];
+        //创建地图对象
+        map = new maptalks.Map('mapObj', //放置mapObj的div id
+        {
+            center:  center, //初始中心点坐标
+            zoom:   5, //初始缩放级别
+            // maxZoom : 5,
+            baseLayer : new maptalks.TileLayer('tile', //底图id
+                {
+                    urlTemplate:'http://map.geoq.cn/ArcGIS/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}',
+                    subdomains:['a','b']//地图服务url子域名变量,对应urlTemplate中占位符{s}的值
+                })
+        });
+
+        var symbol = {
+            'lineWidth' : 20,
+            'lineOpacity' : 0.6,
+            'lineColor' : 'rgba(255, 0, 0, 1)',
+            'polygonOpacity' : 0.5,
+            'polygonFill' : 'rgba(255, 255, 0, 1)'
+            // 'lineDasharray' : [20, 30, 20, 20],
+            // 'linePatternFile' : '../images/man.png'
+        };
+
+        var data = [
+            [[[[115.43164062500001,38.63975407850788],[114.376953125,31.002720211377245],[121.1884765625,27.94264718983301],[132.21875,29.369406259457154],[132.833984375,34.47636948125941],[133.6689453125,36.93818088159642],[126.2421875,40.60282833849397],[122.5947265625,41.200697523302935]]], {'type' : 0}],
+            [[[[120.0, 25], [120.0, 30.0], [110, 30.0]]], {'type' : 0}]
+        ];
+
+        l2013 = new maptalks.BigPolygonLayer('2013', data, {
+                'blur' : 2
+            })
+            .setStyle([
+                {
+                    filter : true,
+                    symbol : symbol
+                }
+            ])
+            .addTo(map);
+
+        // new maptalks.VectorLayer('v')
+        // .addGeometry(new maptalks.Polygon(data[0][0], {
+        //     symbol : {
+        //         lineColor : '#fff'
+        //     }
+        // }))
+        // .addTo(map);
+
+        map.on('click', function (e) {
+          ring.push(e.coordinate.toArray());
+        })
+    }
+
+</script>
+<!-- 引擎javascript开发包-->
+<!-- <script type="text/javascript" src="data/2015.json"></script> -->
+</body>
+</html>
