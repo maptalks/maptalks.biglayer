@@ -4,6 +4,57 @@ import { getTargetZoom } from './painter/Painter';
 
 const RADIAN = Math.PI / 180;
 
+// https://www.w3.org/TR/compositing/#porterduffcompositingoperators
+function setupBlend(gl, compOp) {
+    switch (compOp) {
+    case 'source-over':
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+    case 'destination-over':
+        gl.blendFunc(gl.ONE_MINUS_DST_ALPHA, gl.ONE);
+        break;
+    case 'source-in':
+        gl.blendFunc(gl.DST_ALPHA, gl.ZERO);
+        break;
+    case 'destination-in':
+        gl.blendFunc(gl.ZERO, gl.SRC_ALPHA);
+        break;
+    case 'source-out':
+        gl.blendFunc(gl.ONE_MINUS_DST_ALPHA, gl.ZERO);
+        break;
+    case 'destination-out':
+        gl.blendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+    case 'source-atop':
+        gl.blendFunc(gl.DST_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+    case 'destination-atop':
+        gl.blendFunc(gl.ONE_MINUS_DST_ALPHA, gl.SRC_ALPHA);
+        break;
+    case 'xor':
+        gl.blendFunc(gl.ONE_MINUS_DST_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+    case 'lighter':
+        gl.blendFunc(gl.ONE, gl.ONE);
+        break;
+    case 'copy':
+        gl.blendFunc(gl.ONE, gl.ZERO);
+        break;
+    case 'destination':
+        gl.blendFunc(gl.ZERO, gl.ONE);
+        break;
+    // case 'multiply':
+    //     gl.blendFunc(gl.DST_COLOR, gl.ZERO);
+    //     break;
+    // case 'screen':
+    //     gl.blendFunc(gl.ONE_MINUS_DST_COLOR, gl.ONE);
+    //     break;
+    default:
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+    }
+}
+
 export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
 
     needToRedraw() {
@@ -24,18 +75,17 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         const r = maptalks.Browser.retina ? 2 : 1;
         this.canvas = maptalks.Canvas.createCanvas(r * size['width'], r * size['height'], map.CanvasClass);
         const gl = this.gl = this._createGLContext(this.canvas, this.layer.options['glOptions']);
-        gl.clearColor(0.0, 0.0, 0.0, 0.0);
-        // gl.blendFuncSeparate( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA,
-        //                  gl.ZERO, gl.ONE );
-        //
-        gl.verbose = true;
 
-        // gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        // gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-        gl.blendFunc(gl.ONE, gl.ONE);
+        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+
         gl.enable(gl.BLEND);
+        const compOp = this.layer.options['globalCompositeOperation'] || 'source-over';
+        setupBlend(gl, compOp);
+
         gl.disable(gl.DEPTH_TEST);
+
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+
         if (this.onCanvasCreate) {
             this.onCanvasCreate();
         }
@@ -364,6 +414,10 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         const cy = center2D.y + dist * Math.cos(bearing);
 
         // when map rotates, camera's up axis is pointing to bearing from south direction of map
+        // default [0,1,0] is the Y axis while the angle of inclination always equal 0
+        // if you want to rotate the map after up an incline,please rotateZ like this:
+        // let up = new vec3(0,1,0);
+        // up.rotateZ(target,radians);
         const up = [Math.sin(bearing), Math.cos(bearing), 0];
         const m = mat4.create();
         mat4.lookAt(m, [cx, cy, cz], [center2D.x, center2D.y, 0], up);
