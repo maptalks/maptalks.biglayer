@@ -11,6 +11,8 @@
   "module": "src/maptalks.biglayer.es.js",
   "jsnext:main": "src/maptalks.biglayer.es.js",
   "scripts": {
+    "preversion": "npm run lint",
+    "version": "gulp minify && git add -A dist",
     "lint": "eslint src/**/*.js test/**/*.js",
     "test": "gulp test",
     "pretest": "npm run lint",
