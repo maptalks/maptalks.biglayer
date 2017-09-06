@@ -8,7 +8,8 @@
     "url": "https://github.com/maptalks/maptalks.biglayer.git"
   },
   "main": "dist/maptalks.biglayer.js",
-  "module": "src/maptalks.biglayer.js",
+  "module": "src/maptalks.biglayer.es.js",
+  "jsnext:main": "src/maptalks.biglayer.es.js",
   "scripts": {
     "lint": "eslint src/**/*.js test/**/*.js",
     "test": "gulp test",
@@ -24,18 +25,17 @@
     "eslint-config-maptalks": "^0.2.2",
     "gulp": "^3.9.0",
     "maptalks": "<2.0.0",
-    "maptalks-build-helpers": "^0.1.0",
-    "rollup-watch": "^3.2.2"
+    "maptalks-build-helpers": "^0.4.2"
   },
   "dependencies": {
     "@mapbox/gl-matrix": "^0.0.1",
     "color": "^0.11.3",
     "earcut": "^2.1.1",
     "kdbush": "^1.0.1",
-    "point-geometry": "^0.1.0",
+    "@mapbox/point-geometry": "^0.1.0",
     "rbush": "^2.0.1"
   },
   "peerDependencies": {
-    "maptalks": "^0.25.3"
+    "maptalks": ">=0.25.3"
   }
 }

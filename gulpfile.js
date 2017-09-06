@@ -3,7 +3,6 @@
 const gulp = require('gulp'),
     pkg = require('./package.json'),
     rollup = require('rollup'),
-    watch = require('rollup-watch'),
     BundleHelper = require('maptalks-build-helpers').BundleHelper;
 const bundleHelper = new BundleHelper(pkg);
 
@@ -18,19 +17,24 @@ gulp.task('minify', ['build'], () => {
 gulp.task('watch', () => {
     //gulp.watch(['src/**/*.js'], ['build']);
     const config = bundleHelper.getDefaultRollupConfig();
-    config.entry = 'src/maptalks.webgl.js';
+    config.input = 'src/maptalks.webgl.js';
     const year = new Date().getFullYear();
     const banner = `/*!\n * ${pkg.name} v${pkg.version}\n * LICENSE : ${pkg.license}\n * (c) 2016-${year} maptalks.org\n */`;
-    config.dest = `dist/${pkg.name}.js`;
-    config.format = 'umd';
-    config.moduleName = 'maptalks';
     config.banner = banner;
-    const watcher = watch(rollup, config);
+    config.output = [
+        {
+            file: `dist/${pkg.name}.js`,
+            format: 'umd',
+            name: 'maptalks',
+            extend : true
+        }
+    ];
+    const watcher = rollup.watch(config);
     watcher.on('event', e => {
-        if (e.code === 'BUILD_START') {
+        if (e.code === 'START') {
             console.log('[ROLLUP] Starting...');
             console.time('[ROLLUP]');
-        } else if (e.code === 'BUILD_END') {
+        } else if (e.code === 'END') {
             console.timeEnd('[ROLLUP]');
         } else if (e.code === 'ERROR') {
             console.error(e);

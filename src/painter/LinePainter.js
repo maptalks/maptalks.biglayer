@@ -1,6 +1,6 @@
 import * as maptalks from 'maptalks';
 import Painter from './Painter';
-import Point from 'point-geometry';
+import Point from '@mapbox/point-geometry';
 import { getTargetZoom } from './Painter';
 
 const options = {
