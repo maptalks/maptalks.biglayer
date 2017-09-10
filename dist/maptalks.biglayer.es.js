@@ -1,10 +1,10 @@
 /*!
- * maptalks.biglayer v0.3.2
+ * maptalks.biglayer v0.3.3
  * LICENSE : MIT
  * (c) 2016-2017 maptalks.org
  */
 /*!
- * requires maptalks@>=0.25.3 
+ * requires maptalks@>=0.28.0-beta.2 
  */
 import { Browser, Canvas, Class, Coordinate, Layer, MapboxUtil, Marker, Point, Util, renderer } from 'maptalks';
 
@@ -916,19 +916,6 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
         }
     };
 
-    WebglRenderer.prototype.prepareCanvas = function prepareCanvas() {
-        if (this.context) {
-            return _maptalks$renderer$Ca.prototype.prepareCanvas.call(this);
-        }
-        if (!this.canvas) {
-            this.createCanvas();
-        } else {
-            this.clearCanvas();
-        }
-        this.layer.fire('renderstart', { 'context': this.context, 'gl': this.gl });
-        return null;
-    };
-
     WebglRenderer.prototype.mergeSprites = function mergeSprites(sprites, forPoint) {
         if (!sprites || sprites.length === 0) {
             return null;
@@ -1203,10 +1190,8 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
             return false;
         }
         var pixels = new Uint8Array(1 * 1 * 4);
-        var map = this.getMap();
         var h = this.canvas.height;
-        var cp = map._pointToContainerPoint(point)._round();
-        gl.readPixels(cp.x, h - cp.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        gl.readPixels(point.x, h - point.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         return pixels[3] > 0;
     };
 
@@ -5774,4 +5759,4 @@ ExtrudePolygonLayer.registerRenderer('webgl', ExtrudeRenderer);
 
 export { index as webgl, BigDataLayer, BigPointLayer, BigLineLayer, BigPolygonLayer, ExtrudePolygonLayer };
 
-typeof console !== 'undefined' && console.log('maptalks.biglayer v0.3.2, requires maptalks@>=0.25.3.');
+typeof console !== 'undefined' && console.log('maptalks.biglayer v0.3.3, requires maptalks@>=0.28.0-beta.2.');
