@@ -1,7 +1,10 @@
 var symbols = [
+
+
+
     {
         'markerType' : 'ellipse',
-        'markerLinePatternFile' : '../images/x.svg',
+        'markerLinePatternFile' : 'images/x.svg',
         'markerLineOpacity' : 1,
         'markerLineWidth' : 5,
         // 'markerRotation' : 30,
@@ -21,7 +24,6 @@ var symbols = [
         'markerWidth' : 80,
         'markerHeight' : 20
     },
-
     [
         /*{
             'textName' : '图片标注',
@@ -29,14 +31,15 @@ var symbols = [
         },*/
 
         {
-            'markerFile' : 'marker-shadow.png',
+            'markerFile' : 'images/marker-shadow.png',
             'markerDx'   : 8
         },
         {
             // 'markerRotation' : 30,
-            'markerFile' : 'marker-icon.png'
+            'markerFile' : 'images/marker-icon.png'
         }
     ],
+
 
     [
         /*{
@@ -64,7 +67,7 @@ var symbols = [
         "textSize"         : "20",
         "textFill"         : "#550033",
         "textOpacity"      : 1,
-        "textHaloFill"    : "#fff",
+        "textHaloFill"    : "#0f0",
         "textHaloRadius"  : 3,
 
         "textDx"           : 0,
@@ -88,7 +91,7 @@ var symbols = [
     },
 
     {
-        'markerFile' : 'ph.svg',
+        'markerFile' : 'images/ph.svg',
         'markerWidth' : 75,
         'markerHeight' : 100,
         'markerOpacity': 0.6,
@@ -98,7 +101,7 @@ var symbols = [
 
     [
         {
-            'markerFile' : '../images/x.svg',
+            'markerFile' : 'images/x.svg',
             'markerWidth' : 20,
             'markerHeight' : 20,
             'markerDx' : 50,
@@ -109,20 +112,6 @@ var symbols = [
             'markerWidth' : 80,
             'markerHeight' : 70
         }
-    ],
-
-    {
-        'markerType' : 'ellipse',
-        'markerWidth' : 50,
-        'markerHeight' : 50,
-        'markerFill' : {
-                type : 'radial',
-                colorStops : [
-                    [0.00, 'rgba(88, 144, 181, 0)'],
-                    [1.00, 'rgba(88, 144, 181, 0.2)'],
-                ]
-            },
-        'markerLineOpacity' : 0
-    }
+    ]
 
 ];
