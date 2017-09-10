@@ -35,8 +35,12 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         if (this.layer.getStyle()) {
             this.layer.getStyle().forEach(function (s) {
                 const res = maptalks.Util.getExternalResources(s['symbol'], true);
-                if (res) {
-                    resources.push(res);
+                if (Array.isArray(res) && res.length > 0) {
+                    if (Array.isArray(res[0])) {
+                        maptalks.Util.pushIn(resources, res);
+                    } else {
+                        resources.push(res);
+                    }
                 }
             });
         }
@@ -226,10 +230,6 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
             return;
         }
 
-        if (typeof (window) != 'undefined' && window.MAPTALKS_WEBGL_DEBUG_CANVAS) {
-            window.MAPTALKS_WEBGL_DEBUG_CANVAS.getContext('2d').drawImage(this._sprites.canvas, 0, 0);
-        }
-
         this._needCheckSprites = false;
 
         if (!this._textureLoaded) {
@@ -246,6 +246,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
                 uSprite.push.apply(uSprite, this._sprites.texCoords[i]);
                 uSprite.push(this._sprites.offsets[i].x, this._sprites.offsets[i].y);
             }
+            this.gl.uniform1fv(this.gl.program.u_sprite, this._uSprite);
         }
     }
 
@@ -264,8 +265,8 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         const gl = this.gl;
         const m = this.calcMatrices();
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
-        gl.uniform1f(gl.program.u_scale, this.getMap().getScale());
-        gl.uniform1fv(gl.program.u_sprite, this._uSprite);
+        const map = this.getMap();
+        gl.uniform1f(gl.program.u_scale, map.getScale() / map.getScale(getTargetZoom(map)));
 
         gl.drawArrays(gl.POINTS, 0, this._vertexCount);
     }
