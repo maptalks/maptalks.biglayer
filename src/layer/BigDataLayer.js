@@ -2,7 +2,7 @@ import * as maptalks from 'maptalks';
 
 const options = {
     'renderer' : 'webgl',
-    'doublBuffer' : false,
+    'doublBuffer' : true,
     'renderOnMoving' : false,
     'renderOnZooming' : false
 };
@@ -35,10 +35,18 @@ export default class BigDataLayer extends maptalks.Layer {
             style = opts['style'];
             delete opts['style'];
         }
+        let spriteCanvas;
+        if (opts['spriteCanvas']) {
+            spriteCanvas = opts['spriteCanvas'];
+            delete opts['spriteCanvas'];
+        }
         super(id, opts);
         this.data = data;
         if (style) {
             this.setStyle(style);
+        }
+        if (spriteCanvas) {
+            this._spriteCanvas = spriteCanvas;
         }
     }
 

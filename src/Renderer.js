@@ -171,11 +171,13 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         h = Math.pow(2, Math.ceil(Math.log(h) / Math.LN2));
 
         const map = this.getMap();
-        const spriteCanvas = maptalks.Canvas.createCanvas(w, h, map.CanvasClass),
+        const spriteCanvas = this.layer._spriteCanvas || maptalks.Canvas.createCanvas(w, h, map.CanvasClass),
             ctx = spriteCanvas.getContext('2d'),
             texCoords = [],
             offsets = [],
             sizes = [];
+        spriteCanvas.width = w;
+        spriteCanvas.height = h;
         let pointer = 0;
         sprites.forEach(function (s) {
             let dx = 0, dy = 0, len;
