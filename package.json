@@ -26,15 +26,16 @@
     "eslint": "^2.4.0",
     "eslint-config-maptalks": "^0.2.2",
     "gulp": "^3.9.0",
+    "gulp-connect": "^5.0.0",
     "maptalks": "<2.0.0",
     "maptalks-build-helpers": "^0.4.2"
   },
   "dependencies": {
     "@mapbox/gl-matrix": "^0.0.1",
+    "@mapbox/point-geometry": "^0.1.0",
     "color": "^0.11.3",
     "earcut": "^2.1.1",
     "kdbush": "^1.0.1",
-    "@mapbox/point-geometry": "^0.1.0",
     "rbush": "^2.0.1"
   },
   "peerDependencies": {

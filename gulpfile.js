@@ -3,6 +3,7 @@
 const gulp = require('gulp'),
     pkg = require('./package.json'),
     rollup = require('rollup'),
+    connect = require('gulp-connect'),
     BundleHelper = require('maptalks-build-helpers').BundleHelper;
 const bundleHelper = new BundleHelper(pkg);
 
@@ -36,6 +37,8 @@ gulp.task('watch', () => {
             console.time('[ROLLUP]');
         } else if (e.code === 'END') {
             console.timeEnd('[ROLLUP]');
+            gulp.src('./dist/*.js')
+                .pipe(connect.reload());
         } else if (e.code === 'ERROR') {
             console.error(e);
         }
@@ -43,5 +46,13 @@ gulp.task('watch', () => {
 
 });
 
-gulp.task('default', ['watch']);
+gulp.task('connect', ['watch'], () => {
+    connect.server({
+        root: ['.'],
+        livereload: true,
+        port: 20001
+    });
+});
+
+gulp.task('default', ['connect']);
 
