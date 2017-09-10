@@ -1,5 +1,5 @@
 /*!
- * maptalks.biglayer v0.3.1
+ * maptalks.biglayer v0.3.2
  * LICENSE : MIT
  * (c) 2016-2017 maptalks.org
  */
@@ -960,11 +960,13 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
         h = Math.pow(2, Math.ceil(Math.log(h) / Math.LN2));
 
         var map = this.getMap();
-        var spriteCanvas = maptalks.Canvas.createCanvas(w, h, map.CanvasClass),
+        var spriteCanvas = this.layer._spriteCanvas || maptalks.Canvas.createCanvas(w, h, map.CanvasClass),
             ctx = spriteCanvas.getContext('2d'),
             texCoords = [],
             offsets = [],
             sizes = [];
+        spriteCanvas.width = w;
+        spriteCanvas.height = h;
         var pointer = 0;
         sprites.forEach(function (s) {
             var dx = 0,
@@ -2513,7 +2515,7 @@ var index = Object.freeze({
 
 var options$2 = {
     'renderer': 'webgl',
-    'doublBuffer': false,
+    'doublBuffer': true,
     'renderOnMoving': false,
     'renderOnZooming': false
 };
@@ -2542,12 +2544,20 @@ var BigDataLayer = function (_maptalks$Layer) {
             style = opts['style'];
             delete opts['style'];
         }
+        var spriteCanvas = void 0;
+        if (opts['spriteCanvas']) {
+            spriteCanvas = opts['spriteCanvas'];
+            delete opts['spriteCanvas'];
+        }
 
         var _this = possibleConstructorReturn(this, _maptalks$Layer.call(this, id, opts));
 
         _this.data = data;
         if (style) {
             _this.setStyle(style);
+        }
+        if (spriteCanvas) {
+            _this._spriteCanvas = spriteCanvas;
         }
         return _this;
     }
@@ -2837,8 +2847,12 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
         if (this.layer.getStyle()) {
             this.layer.getStyle().forEach(function (s) {
                 var res = maptalks.Util.getExternalResources(s['symbol'], true);
-                if (res) {
-                    resources.push(res);
+                if (Array.isArray(res) && res.length > 0) {
+                    if (Array.isArray(res[0])) {
+                        maptalks.Util.pushIn(resources, res);
+                    } else {
+                        resources.push(res);
+                    }
                 }
             });
         }
@@ -3016,10 +3030,6 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
             return;
         }
 
-        if (typeof window != 'undefined' && window.MAPTALKS_WEBGL_DEBUG_CANVAS) {
-            window.MAPTALKS_WEBGL_DEBUG_CANVAS.getContext('2d').drawImage(this._sprites.canvas, 0, 0);
-        }
-
         this._needCheckSprites = false;
 
         if (!this._textureLoaded) {
@@ -3036,6 +3046,7 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
                 uSprite.push.apply(uSprite, this._sprites.texCoords[i]);
                 uSprite.push(this._sprites.offsets[i].x, this._sprites.offsets[i].y);
             }
+            this.gl.uniform1fv(this.gl.program.u_sprite, this._uSprite);
         }
     };
 
@@ -3052,8 +3063,8 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
         var gl = this.gl;
         var m = this.calcMatrices();
         gl.uniformMatrix4fv(gl.program.u_matrix, false, m);
-        gl.uniform1f(gl.program.u_scale, this.getMap().getScale());
-        gl.uniform1fv(gl.program.u_sprite, this._uSprite);
+        var map = this.getMap();
+        gl.uniform1f(gl.program.u_scale, map.getScale() / map.getScale(getTargetZoom(map)));
 
         gl.drawArrays(gl.POINTS, 0, this._vertexCount);
     };
@@ -5774,6 +5785,6 @@ exports.ExtrudePolygonLayer = ExtrudePolygonLayer;
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-typeof console !== 'undefined' && console.log('maptalks.biglayer v0.3.1, requires maptalks@>=0.25.3.');
+typeof console !== 'undefined' && console.log('maptalks.biglayer v0.3.2, requires maptalks@>=0.25.3.');
 
 })));

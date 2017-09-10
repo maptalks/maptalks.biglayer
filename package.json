@@ -1,6 +1,6 @@
 {
   "name": "maptalks.biglayer",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A maptalks layer to render millions of data with WebGL",
   "license": "MIT",
   "repository": {
