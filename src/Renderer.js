@@ -123,20 +123,6 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         }
     }
 
-    prepareCanvas() {
-        if (this.context) {
-            // the layer is double buffered, clip the canvas with layer's mask.
-            return super.prepareCanvas();
-        }
-        if (!this.canvas) {
-            this.createCanvas();
-        } else {
-            this.clearCanvas();
-        }
-        this.layer.fire('renderstart', { 'context' : this.context, 'gl' : this.gl });
-        return null;
-    }
-
     /**
      * merge sprites to a large sprite
      * @param  {Object[]} sprites   - sprites to merge
@@ -438,10 +424,8 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
             return false;
         }
         const pixels = new Uint8Array(1 * 1 * 4);
-        const map = this.getMap();
         const h = this.canvas.height;
-        const cp = map._pointToContainerPoint(point)._round();
-        gl.readPixels(cp.x, h - cp.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        gl.readPixels(point.x, h - point.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         return (pixels[3] > 0);
     }
 

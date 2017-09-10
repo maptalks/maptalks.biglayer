@@ -39,6 +39,6 @@
     "rbush": "^2.0.1"
   },
   "peerDependencies": {
-    "maptalks": ">=0.25.3"
+    "maptalks": ">=0.28.0-beta.2"
   }
 }
