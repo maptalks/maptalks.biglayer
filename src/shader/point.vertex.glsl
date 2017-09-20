@@ -1,6 +1,3 @@
-import { maxUniformLength } from './common';
-export default
-`
 // marker's 2d point at max zoom
 attribute vec4 a_pos;
 // texture idx in u_sprite
@@ -12,7 +9,7 @@ uniform float u_scale;
 // a sprite has 6 integers:
 // 0 : northwest's x, 1 : width, 2: height, 3: sprite size, 4: offset x, 5: offset y
 // array's length is not dynamic, support maximum count / 6 sprites
-uniform float u_sprite[${maxUniformLength}];
+uniform float u_sprite[maxUniformLength];
 varying vec3 v_texCoord;
 void main() {
   int idx = int(a_sprite_idx) * 6;
@@ -23,4 +20,4 @@ void main() {
   gl_PointSize = size;
   // texture coord
   v_texCoord = vec3(u_sprite[idx], u_sprite[idx + 1], u_sprite[idx + 2]);
-}`;
+}

@@ -1,6 +1,4 @@
-import { maxUniformLength } from './common';
-export default
-`#ifdef GL_ES
+#ifdef GL_ES
 precision highp float;
 #else
 #define lowp
@@ -18,7 +16,7 @@ attribute float a_style;
 
 uniform mat4 u_matrix;
 uniform float u_scale;
-uniform float u_styles[${maxUniformLength}];
+uniform float u_styles[maxUniformLength];
 
 varying vec2 v_linenormal;
 varying float v_linewidth;
@@ -60,5 +58,4 @@ void main() {
         //
         v_texture_normal = sign(a_normal.y);
     }
-
-}`;
+}

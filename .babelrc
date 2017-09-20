@@ -4,6 +4,7 @@
   ],
   "plugins": [
     "external-helpers",
+    "static-fs",
     "transform-proto-to-assign"
   ],
   "ignore": [

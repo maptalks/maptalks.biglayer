@@ -1,27 +1,33 @@
-import lineFragment from './line.fragment';
-import lineVertex from './line.vertex';
-import pointFragment from './point.fragment';
-import pointVertex from './point.vertex';
-import polygonFragment from './polygon.fragment';
-import polygonVertex from './polygon.vertex';
-import extrudeFragment from './extrude.fragment';
-import extrudeVertex from './extrude.vertex';
+import { readFileSync } from 'fs';
+import { maxUniformLength } from './common';
 
-export default {
-    'line': {
-        'fragmentSource' : lineFragment,
-        'vertexSource' : lineVertex
+/* eslint-disable prefer-template, no-path-concat */
+
+const shaders = {
+    line: {
+        fragmentSource: readFileSync(__dirname + '/line.fragment.glsl', 'utf8'),
+        vertexSource: readFileSync(__dirname + '/line.vertex.glsl', 'utf8')
     },
-    'point': {
-        'fragmentSource' : pointFragment,
-        'vertexSource' : pointVertex
+    point: {
+        fragmentSource: readFileSync(__dirname + '/point.fragment.glsl', 'utf8'),
+        vertexSource: readFileSync(__dirname + '/point.vertex.glsl', 'utf8')
     },
-    'polygon' : {
-        'fragmentSource' : polygonFragment,
-        'vertexSource' : polygonVertex
+    polygon: {
+        fragmentSource: readFileSync(__dirname + '/polygon.fragment.glsl', 'utf8'),
+        vertexSource: readFileSync(__dirname + '/polygon.vertex.glsl', 'utf8')
     },
-    'extrude' : {
-        'fragmentSource' : extrudeFragment,
-        'vertexSource' : extrudeVertex
+    extrude: {
+        fragmentSource: readFileSync(__dirname + '/extrude.fragment.glsl', 'utf8'),
+        vertexSource: readFileSync(__dirname + '/extrude.vertex.glsl', 'utf8')
     }
 };
+
+const re = /maxUniformLength/g;
+
+for (const name in shaders) {
+    const program = shaders[name];
+    program.fragmentSource = program.fragmentSource.replace(re, maxUniformLength);
+    program.vertexSource = program.vertexSource.replace(re, maxUniformLength);
+}
+
+export default shaders;

@@ -8,7 +8,7 @@ const gulp = require('gulp'),
 const bundleHelper = new BundleHelper(pkg);
 
 gulp.task('build', () => {
-    return bundleHelper.bundle('src/maptalks.webgl.js');
+    return bundleHelper.bundle('src/index.js');
 });
 
 gulp.task('minify', ['build'], () => {
@@ -18,7 +18,7 @@ gulp.task('minify', ['build'], () => {
 gulp.task('watch', () => {
     //gulp.watch(['src/**/*.js'], ['build']);
     const config = bundleHelper.getDefaultRollupConfig();
-    config.input = 'src/maptalks.webgl.js';
+    config.input = 'src/index.js';
     const year = new Date().getFullYear();
     const banner = `/*!\n * ${pkg.name} v${pkg.version}\n * LICENSE : ${pkg.license}\n * (c) 2016-${year} maptalks.org\n */`;
     config.banner = banner;
@@ -55,4 +55,3 @@ gulp.task('connect', ['watch'], () => {
 });
 
 gulp.task('default', ['connect']);
-
