@@ -7,8 +7,33 @@ const gulp = require('gulp'),
     BundleHelper = require('maptalks-build-helpers').BundleHelper;
 const bundleHelper = new BundleHelper(pkg);
 
+// https://github.com/mrdoob/three.js/blob/dev/rollup.config.js#L1
+function glsl() {
+    return {
+        transform(code, id) {
+            if (/\.glsl$/.test(id) === false) return undefined;
+
+            const transformedCode = 'export default ' + JSON.stringify(
+                code
+                .replace(/[ \t]*\/\/.*\n/g, '') // remove //
+                .replace(/[ \t]*\/\*[\s\S]*?\*\//g, '') // remove /* */
+                .replace(/\n{2,}/g, '\n') // # \n+ to \n
+            ) + ';';
+
+            return {
+                code: transformedCode,
+                map: {
+                    mappings: ''
+                }
+            };
+        }
+    };
+}
+
 gulp.task('build', () => {
-    return bundleHelper.bundle('src/index.js');
+    const config = bundleHelper.getDefaultRollupConfig();
+    config.plugins.unshift(glsl());
+    return bundleHelper.bundle('src/index.js', config);
 });
 
 gulp.task('minify', ['build'], () => {
@@ -16,20 +41,18 @@ gulp.task('minify', ['build'], () => {
 });
 
 gulp.task('watch', () => {
-    //gulp.watch(['src/**/*.js'], ['build']);
     const config = bundleHelper.getDefaultRollupConfig();
+    config.plugins.unshift(glsl());
     config.input = 'src/index.js';
     const year = new Date().getFullYear();
     const banner = `/*!\n * ${pkg.name} v${pkg.version}\n * LICENSE : ${pkg.license}\n * (c) 2016-${year} maptalks.org\n */`;
     config.banner = banner;
-    config.output = [
-        {
-            file: `dist/${pkg.name}.js`,
-            format: 'umd',
-            name: 'maptalks',
-            extend : true
-        }
-    ];
+    config.output = [{
+        file: `dist/${pkg.name}.js`,
+        format: 'umd',
+        name: 'maptalks',
+        extend: true
+    }];
     const watcher = rollup.watch(config);
     watcher.on('event', e => {
         if (e.code === 'START') {
