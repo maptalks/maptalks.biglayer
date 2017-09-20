@@ -5,6 +5,7 @@ module.exports = LineAtlas;
 /**
  * From mapbox-gl-js
  * https://github.com/mapbox/mapbox-gl-js
+ * @deprecated
  *
  * @author mapbox team
  * @license MIT
