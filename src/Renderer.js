@@ -69,11 +69,15 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         if (this.canvas) {
             return;
         }
+        super.createCanvas();
 
-        const map = this.getMap();
-        const size = map.getSize();
-        const r = maptalks.Browser.retina ? 2 : 1;
-        this.canvas = maptalks.Canvas.createCanvas(r * size['width'], r * size['height'], map.CanvasClass);
+        if (this.layer.options['doubleBuffer']) {
+            this.buffer = maptalks.Canvas.createCanvas(this.canvas.width, this.canvas.height, this.getMap().CanvasClass);
+            this.context = this.buffer.getContext('2d');
+        }
+    }
+
+    initContext() {
         const gl = this.gl = this._createGLContext(this.canvas, this.layer.options['glOptions']);
 
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
@@ -85,15 +89,6 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         gl.disable(gl.DEPTH_TEST);
 
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-
-        if (this.onCanvasCreate) {
-            this.onCanvasCreate();
-        }
-
-        if (this.layer.options['doubleBuffer']) {
-            this.buffer = maptalks.Canvas.createCanvas(this.canvas.width, this.canvas.height, map.CanvasClass);
-            this.context = this.buffer.getContext('2d');
-        }
     }
 
     resizeCanvas(canvasSize) {
@@ -484,19 +479,18 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
      * @return created shader object, or null if the creation has failed.
      */
     _compileShader(gl, type, source) {
-      // Create shader object
+        // Create shader object
         const shader = gl.createShader(type);
         if (shader == null) {
             throw new Error('unable to create shader');
         }
 
-      // Set the shader program
+        // Set the shader program
         gl.shaderSource(shader, source);
-
-      // Compile the shader
+        // Compile the shader
         gl.compileShader(shader);
 
-      // Check the result of compilation
+        // Check the result of compilation
         const compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
         if (!compiled) {
             const error = gl.getShaderInfoLog(shader);
