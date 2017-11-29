@@ -37,6 +37,7 @@
 <body scroll="no">
   <div id="mapObj" style="width:100%;height:80%;float:right;margin-top:0px"></div>
   <canvas id="texture"></canvas>
+  <canvas id="debug"></canvas>
 
   <script type="text/javascript">
     window.MAPTALKS_WEBGL_DEBUG_CANVAS = document.getElementById('texture');
@@ -99,7 +100,9 @@
         ]
       ];
 
+      var debugCanvas = document.getElementById('debug');
       l2013 = new maptalks.BigPolygonLayer('2013', data, {
+          canvas: debugCanvas,
           'blur': 2
         })
         .setStyle([{
