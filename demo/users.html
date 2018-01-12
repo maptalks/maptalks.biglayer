@@ -30,7 +30,7 @@
             'markerType' : 'square',
             'markerWidth' : 0.5,
             'markerHeight' : 0.5,
-            'markerFill' :'rgba(86, 197, 234, 0.1)',/* {
+            'markerFill' :'rgba(86, 197, 234, 0.4)',/* {
                     type : 'radial',
                     colorStops : [
                         [0.00, 'rgba(86, 197, 234, 0)'],
@@ -39,7 +39,7 @@
                 },*/
             'markerLineOpacity' : 0
         };
-        var data = data2014;
+        var data = data2015;
         console.log(data.length);
         l2015 = new maptalks.BigPointLayer('2015', data.map(function (d) { d.push(1); return d; }))
             .setStyle({
@@ -61,8 +61,8 @@
 
 </script>
 <!-- 引擎javascript开发包-->
-<script type="text/javascript" src="data/2014.js"></script>
-<script type="text/javascript" src="http://localhost:20000/maptalks.js"></script>
-<script type="text/javascript" src="../dist/maptalks.webgl.js"></script>
+<script type="text/javascript" src="data/2015.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/maptalks@0.37.0/dist/maptalks.min.js"></script>
+<script type="text/javascript" src="../dist/maptalks.biglayer.js"></script>
 </body>
 </html>

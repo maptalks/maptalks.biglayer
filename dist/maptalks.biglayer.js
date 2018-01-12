@@ -1,10 +1,7 @@
 /*!
  * maptalks.biglayer v0.3.3
  * LICENSE : MIT
- * (c) 2016-2017 maptalks.org
- */
-/*!
- * requires maptalks@>=0.28.0-beta.2 
+ * (c) 2016-2018 maptalks.org
  */
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('maptalks')) :
@@ -866,11 +863,15 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
         if (this.canvas) {
             return;
         }
+        _maptalks$renderer$Ca.prototype.createCanvas.call(this);
 
-        var map = this.getMap();
-        var size = map.getSize();
-        var r = maptalks.Browser.retina ? 2 : 1;
-        this.canvas = maptalks.Canvas.createCanvas(r * size['width'], r * size['height'], map.CanvasClass);
+        if (this.layer.options['doubleBuffer']) {
+            this.buffer = maptalks.Canvas.createCanvas(this.canvas.width, this.canvas.height, this.getMap().CanvasClass);
+            this.context = this.buffer.getContext('2d');
+        }
+    };
+
+    WebglRenderer.prototype.createContext = function createContext() {
         var gl = this.gl = this._createGLContext(this.canvas, this.layer.options['glOptions']);
 
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
@@ -883,15 +884,10 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
 
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
 
-        if (this.onCanvasCreate) {
-            this.onCanvasCreate();
-        }
-
-        if (this.layer.options['doubleBuffer']) {
-            this.buffer = maptalks.Canvas.createCanvas(this.canvas.width, this.canvas.height, map.CanvasClass);
-            this.context = this.buffer.getContext('2d');
-        }
+        this.onContextCreate();
     };
+
+    WebglRenderer.prototype.onContextCreate = function onContextCreate() {};
 
     WebglRenderer.prototype.resizeCanvas = function resizeCanvas(canvasSize) {
         if (!this.canvas) {
@@ -2458,7 +2454,7 @@ var lineVertex = '#ifdef GL_ES\nprecision highp float;\n#else\n#define lowp\n#de
 
 var pointFragment = "\nprecision mediump float;\nuniform sampler2D u_sampler;\nvarying vec3 v_texCoord;\nvoid main() {\n    gl_FragColor = texture2D(u_sampler, vec2(v_texCoord[0] + gl_PointCoord[0] * v_texCoord[1], 1.0 + gl_PointCoord[1] * v_texCoord[2]));\n}";
 
-var pointVertex = '\n// marker\'s 2d point at max zoom\nattribute vec4 a_pos;\n// texture idx in u_sprite\nattribute float a_sprite_idx;\nuniform mat4 u_matrix;\n// scale of current zoom\nuniform float u_scale;\n// sprites, an array of sprites\n// a sprite has 6 integers:\n// 0 : northwest\'s x, 1 : width, 2: height, 3: sprite size, 4: offset x, 5: offset y\n// array\'s length is not dynamic, support maximum count / 6 sprites\nuniform float u_sprite[' + maxUniformLength + '];\nvarying vec3 v_texCoord;\nvoid main() {\n  int idx = int(a_sprite_idx) * 6;\n  float size = u_sprite[idx + 3];\n  vec2 textOffset = vec2(u_sprite[idx + 4], u_sprite[idx + 5]);\n  vec4 pos = vec4(a_pos.x + textOffset.x * u_scale, a_pos.y + textOffset.y * u_scale, a_pos.z, a_pos.w);\n  gl_Position = u_matrix * pos;\n  gl_PointSize = size;\n  // texture coord\n  v_texCoord = vec3(u_sprite[idx], u_sprite[idx + 1], u_sprite[idx + 2]);\n}';
+var pointVertex = '\n// marker\'s 2d point at max zoom\nattribute vec4 a_pos;\n\n// texture idx in u_sprite\nattribute float a_sprite_idx;\n\nuniform mat4 u_matrix;\n\n// scale of current zoom\nuniform float u_scale;\n\n// sprites, an array of sprites\n// a sprite has 6 integers:\n// 0 : northwest\'s x, 1 : width, 2: height, 3: sprite size, 4: offset x, 5: offset y\n// array\'s length is not dynamic, support maximum count / 6 sprites\nuniform float u_sprite[' + maxUniformLength + '];\n\nvarying vec3 v_texCoord;\n\nvoid main() {\n  int idx = int(a_sprite_idx) * 6;\n  float size = u_sprite[idx + 3];\n  vec2 textOffset = vec2(u_sprite[idx + 4], u_sprite[idx + 5]);\n\n  vec4 pos = vec4(a_pos.x + textOffset.x * u_scale, a_pos.y + textOffset.y * u_scale, a_pos.z, a_pos.w);\n\n  gl_Position = u_matrix * pos;\n\n  gl_PointSize = size;\n\n  // texture coord\n  v_texCoord = vec3(u_sprite[idx], u_sprite[idx + 1], u_sprite[idx + 2]);\n}';
 
 var polygonFragment = "\nprecision mediump float;\n\nvarying vec4 v_texcoord;\nvarying float v_opacity;\nvoid main() {\n    gl_FragColor = v_texcoord * v_opacity;\n}";
 
@@ -2848,7 +2844,7 @@ BigPointLayer.registerRenderer('webgl', function (_WebglRenderer) {
         return resources;
     };
 
-    _class.prototype.onCanvasCreate = function onCanvasCreate() {
+    _class.prototype.onContextCreate = function onContextCreate() {
         var gl = this.gl;
         var uniforms = ['u_matrix', 'u_scale', 'u_sprite[0]'];
         var program = this.createProgram(shaders.point.vertexSource, shaders.point.fragmentSource, uniforms);
@@ -4999,7 +4995,7 @@ var PathRenderer = function (_WebglRenderer) {
         return resources;
     };
 
-    PathRenderer.prototype.onCanvasCreate = function onCanvasCreate() {
+    PathRenderer.prototype.onContextCreate = function onContextCreate() {
         this.gl.getExtension('OES_element_index_uint');
     };
 
@@ -5172,10 +5168,10 @@ var BigLineRenderer = function (_PathRenderer) {
         return possibleConstructorReturn(this, _PathRenderer.apply(this, arguments));
     }
 
-    BigLineRenderer.prototype.onCanvasCreate = function onCanvasCreate() {
+    BigLineRenderer.prototype.onContextCreate = function onContextCreate() {
         var uniforms = ['u_matrix', 'u_scale', 'u_tex_size', 'u_styles[0]'];
         this._lineProgram = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
-        _PathRenderer.prototype.onCanvasCreate.call(this);
+        _PathRenderer.prototype.onContextCreate.call(this);
     };
 
     BigLineRenderer.prototype.draw = function draw() {
@@ -5324,10 +5320,10 @@ BigPolygonLayer.registerRenderer('webgl', function (_BigLineRenderer) {
         return possibleConstructorReturn(this, _BigLineRenderer.apply(this, arguments));
     }
 
-    _class.prototype.onCanvasCreate = function onCanvasCreate() {
+    _class.prototype.onContextCreate = function onContextCreate() {
         var uniforms = ['u_matrix', 'u_fill_styles[0]'];
         this._polygonProgram = this.createProgram(shaders.polygon.vertexSource, shaders.polygon.fragmentSource, uniforms);
-        _BigLineRenderer.prototype.onCanvasCreate.call(this);
+        _BigLineRenderer.prototype.onContextCreate.call(this);
     };
 
     _class.prototype.draw = function draw() {
@@ -5626,10 +5622,10 @@ var ExtrudeRenderer = function (_PathRenderer) {
         return possibleConstructorReturn(this, _PathRenderer.apply(this, arguments));
     }
 
-    ExtrudeRenderer.prototype.onCanvasCreate = function onCanvasCreate() {
+    ExtrudeRenderer.prototype.onContextCreate = function onContextCreate() {
         var uniforms = ['u_matrix', 'u_fill_styles[0]', 'u_lightcolor', 'u_lightpos', 'u_ambientlight', 'u_lightintensity'];
         this.program = this.createProgram(shaders.extrude.vertexSource, shaders.extrude.fragmentSource, uniforms);
-        _PathRenderer.prototype.onCanvasCreate.call(this);
+        _PathRenderer.prototype.onContextCreate.call(this);
         var gl = this.gl;
         gl.enable(gl.DEPTH_TEST);
 
@@ -5769,7 +5765,5 @@ exports.BigPolygonLayer = BigPolygonLayer;
 exports.ExtrudePolygonLayer = ExtrudePolygonLayer;
 
 Object.defineProperty(exports, '__esModule', { value: true });
-
-typeof console !== 'undefined' && console.log('maptalks.biglayer v0.3.3, requires maptalks@>=0.28.0-beta.2.');
 
 })));

@@ -7,7 +7,7 @@
     <style type="text/css">
         html,body{ margin:0px; height:100%; };
     </style>
-    <title>注册用户分布</title>
+    <title>中国所有的村/寨/沟/岭</title>
 </head>
 <body scroll="no" onload="initMap();">
 <div id="mapObj" style="width:100%;height:100%;float:right;margin-top:0px"></div>
@@ -37,6 +37,8 @@
       maptalks.Util.pushIn(data, zhai.features);
       maptalks.Util.pushIn(data, gou.features);
       maptalks.Util.pushIn(data, ling.features);
+
+      console.log(data.length);
 
       l2015 = new maptalks.BigPointLayer('big', data, {'blendEquation' : 'add'})
           .setStyle(
@@ -101,7 +103,7 @@
 <script type="text/javascript" src="data/cun.js"></script>
 <script type="text/javascript" src="data/gou.js"></script>
 <script type="text/javascript" src="data/ling.js"></script>
-<script type="text/javascript" src="http://localhost:20000/maptalks.js"></script>
-<script type="text/javascript" src="../dist/maptalks.webgl.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/maptalks@0.37.0/dist/maptalks.min.js"></script>
+<script type="text/javascript" src="../dist/maptalks.biglayer.js"></script>
 </body>
 </html>
