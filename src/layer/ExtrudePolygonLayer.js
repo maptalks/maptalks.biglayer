@@ -22,10 +22,10 @@ ExtrudePolygonLayer.registerJSONType('ExtrudePolygonLayer');
 
 export class ExtrudeRenderer extends PathRenderer {
 
-    onCanvasCreate() {
+    onContextCreate() {
         const uniforms = ['u_matrix', 'u_fill_styles[0]', 'u_lightcolor', 'u_lightpos', 'u_ambientlight', 'u_lightintensity'];
         this.program = this.createProgram(shaders.extrude.vertexSource, shaders.extrude.fragmentSource, uniforms);
-        super.onCanvasCreate();
+        super.onContextCreate();
         const gl = this.gl;
         gl.enable(gl.DEPTH_TEST);
         // gl.depthFunc(gl.EQUAL);

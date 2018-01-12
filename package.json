@@ -16,8 +16,9 @@
     "lint": "eslint src/**/*.js test/**/*.js",
     "test": "gulp test",
     "pretest": "npm run lint",
-    "build": "gulp build",
-    "prepublish": "npm run lint && gulp minify"
+    "build": "gulp minify",
+    "prepublish": "npm run lint && gulp minify",
+    "dev" : "gulp"
   },
   "devDependencies": {
     "babel-eslint": "^7.1.1",

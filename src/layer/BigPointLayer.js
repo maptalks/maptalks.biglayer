@@ -51,7 +51,7 @@ BigPointLayer.registerRenderer('webgl', class extends WebglRenderer {
         return resources;
     }
 
-    onCanvasCreate() {
+    onContextCreate() {
         const gl = this.gl;
         const uniforms = ['u_matrix', 'u_scale', 'u_sprite[0]'];
         const program = this.createProgram(shaders.point.vertexSource, shaders.point.fragmentSource, uniforms);

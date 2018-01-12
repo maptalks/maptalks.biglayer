@@ -26,10 +26,10 @@ BigLineLayer.registerJSONType('BigLineLayer');
 export class BigLineRenderer extends PathRenderer {
 
 
-    onCanvasCreate() {
+    onContextCreate() {
         const uniforms = ['u_matrix', 'u_scale', 'u_tex_size', /*'u_blur',*/ 'u_styles[0]'];
         this._lineProgram = this.createProgram(shaders.line.vertexSource, shaders.line.fragmentSource, uniforms);
-        super.onCanvasCreate();
+        super.onContextCreate();
     }
 
     draw() {

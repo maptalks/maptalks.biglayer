@@ -77,7 +77,7 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         }
     }
 
-    initContext() {
+    createContext() {
         const gl = this.gl = this._createGLContext(this.canvas, this.layer.options['glOptions']);
 
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
@@ -89,6 +89,12 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
         gl.disable(gl.DEPTH_TEST);
 
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+
+        this.onContextCreate();
+    }
+
+    onContextCreate() {
+
     }
 
     resizeCanvas(canvasSize) {

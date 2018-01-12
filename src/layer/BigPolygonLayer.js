@@ -17,10 +17,10 @@ BigPolygonLayer.registerJSONType('BigPolygonLayer');
 
 BigPolygonLayer.registerRenderer('webgl', class extends BigLineRenderer {
 
-    onCanvasCreate() {
+    onContextCreate() {
         const uniforms = ['u_matrix', 'u_fill_styles[0]'];
         this._polygonProgram = this.createProgram(shaders.polygon.vertexSource, shaders.polygon.fragmentSource, uniforms);
-        super.onCanvasCreate();
+        super.onContextCreate();
     }
 
     draw() {

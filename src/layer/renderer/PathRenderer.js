@@ -42,7 +42,7 @@ export default class PathRenderer extends WebglRenderer {
         return resources;
     }
 
-    onCanvasCreate() {
+    onContextCreate() {
         // enable drawElements to use UNSIGNED_INT as the type of element array buffer
         // default type is UNSIGNED_SHORT(0 ~ 65536)
         this.gl.getExtension('OES_element_index_uint');
