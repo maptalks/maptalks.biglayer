@@ -25,7 +25,7 @@ demo/zhai.html
 
 ![china-villages](https://user-images.githubusercontent.com/13678919/34857110-050a7bec-f784-11e7-9034-ff6977204657.png)
 
-* Registered user visualization of a internet service
+* More than 3000K registered user visualization of a internet service
 
 demo/users.html
 
