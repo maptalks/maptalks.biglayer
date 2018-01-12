@@ -6,6 +6,7 @@ An experimental layer to draw millions of data with native webgl.
 
 ### Run
 ```shell
+git clone https://github.com/maptalks/maptalks.biglayer.git
 npm install
 npm run dev
 ```
