@@ -1144,7 +1144,9 @@ var WebglRenderer = function (_maptalks$renderer$Ca) {
         if (!Util.IS_NODE) {
             scale$3(m, m, [1, -1, 1]);
         }
+
         copy$3(m1, m);
+
         var m2 = this._getLookAtMat();
         multiply$3(m, m1, m2);
         return m;
@@ -2445,46 +2447,54 @@ var PolygonPainter = function (_Painter) {
 
 PolygonPainter.mergeOptions(options$1);
 
-var lineFragment = "#ifdef GL_ES\nprecision mediump float;\n#else\n#define lowp\n#define mediump\n#define highp\n#endif\n\nuniform float u_blur;\nuniform vec2 u_tex_size;\n\n// varying lowp vec4 v_color;\n// varying vec2 v_linenormal;\nvarying vec4 v_texcoord;\nvarying float v_opacity;\nvarying float v_linewidth;\nvarying float v_scale;\nvarying float v_texture_normal;\nvarying float v_linesofar;\n// varying float v_ruler;\n\nuniform sampler2D u_image;\n\nvoid main() {\n    vec4 color;\n    if (v_texcoord.q == -1.0) {\n        // is a texture fragment\n        float linesofar = v_linesofar / v_scale;\n        float texWidth = u_tex_size.x * v_texcoord.t;\n        float x = v_texcoord.s + mod(linesofar, texWidth) / texWidth * v_texcoord.t;\n        float y = (v_texture_normal + 1.0) / 2.0 * v_texcoord.p;\n\n        color = texture2D(u_image, vec2(x, y));\n    } else {\n        // a color fragment\n        color = v_texcoord;\n    }\n    float alpha = 1.0;\n    gl_FragColor = color * (alpha * v_opacity);\n#ifdef OVERDRAW_INSPECTOR\n    gl_FragColor = vec4(1.0);\n#endif\n}";
-
 var maxUniformLength = Browser.ie || Browser.edge ? 504 : Util.IS_NODE ? 1014 : 240;
 
-var lineVertex = '#ifdef GL_ES\nprecision highp float;\n#else\n#define lowp\n#define mediump\n#define highp\n#endif\n\nattribute vec4 a_pos;\nattribute mediump vec2 a_normal;\n// attribute mediump vec2 a_linenormal;\nattribute float a_linesofar;\n// (line_width * 100 + opacity * 10) * 10000 + tex_idx\nattribute float a_style;\n// attribute float a_seglen;\n\nuniform mat4 u_matrix;\nuniform float u_scale;\nuniform float u_styles[' + maxUniformLength + '];\n\nvarying vec2 v_linenormal;\nvarying float v_linewidth;\nvarying float v_opacity;\nvarying vec4 v_texcoord;\nvarying float v_scale;\nvarying float v_texture_normal;\n\nvarying float v_linesofar;\n// varying float v_ruler;\n\nvoid main() {\n    int tex_idx = int(mod(a_style, 10000.0));\n    float s = floor(a_style / 10000.0);\n    v_opacity = mod(s, 10.0) / 10.0;\n    if (v_opacity == 0.0) {\n        v_opacity = 1.0;\n    }\n    v_linewidth = s / 100.0;\n    v_texcoord = vec4(u_styles[tex_idx], u_styles[tex_idx + 1], u_styles[tex_idx + 2], u_styles[tex_idx + 3]);\n\n    v_scale = u_scale;\n\n    // v_linenormal = a_linenormal;\n\n    vec4 pos = a_pos;\n    pos.x += a_normal.x * v_linewidth * u_scale;\n    pos.y += a_normal.y * v_linewidth * u_scale;\n\n    // add linesofar with corner length caused by line-join\n    v_linesofar = a_linesofar;\n\n\n    gl_Position = u_matrix * pos;\n    if (a_normal.y == 0.0) {\n        // with an upside down straight line, a_normal.y is always 0, use a_normal.x instead\n        v_texture_normal = -sign(a_normal.x);\n    } else {\n        //\n        v_texture_normal = sign(a_normal.y);\n    }\n\n}';
+var lineFragment = "#ifdef GL_ES\r\nprecision mediump float;\r\n#else\r\n#define lowp\r\n#define mediump\r\n#define highp\r\n#endif\r\n\r\nuniform float u_blur;\r\nuniform vec2 u_tex_size;\r\n\r\n// varying lowp vec4 v_color;\r\n// varying vec2 v_linenormal;\r\nvarying vec4 v_texcoord;\r\nvarying float v_opacity;\r\nvarying float v_linewidth;\r\nvarying float v_scale;\r\nvarying float v_texture_normal;\r\nvarying float v_linesofar;\r\n// varying float v_ruler;\r\n\r\nuniform sampler2D u_image;\r\n\r\nvoid main() {\r\n    vec4 color;\r\n    if (v_texcoord.q == -1.0) {\r\n        // is a texture fragment\r\n        float linesofar = v_linesofar / v_scale;\r\n        float texWidth = u_tex_size.x * v_texcoord.t;\r\n        float x = v_texcoord.s + mod(linesofar, texWidth) / texWidth * v_texcoord.t;\r\n        float y = (v_texture_normal + 1.0) / 2.0 * v_texcoord.p;\r\n\r\n        color = texture2D(u_image, vec2(x, y));\r\n    } else {\r\n        // a color fragment\r\n        color = v_texcoord;\r\n    }\r\n    float alpha = 1.0;\r\n    gl_FragColor = color * (alpha * v_opacity);\r\n#ifdef OVERDRAW_INSPECTOR\r\n    gl_FragColor = vec4(1.0);\r\n#endif\r\n}\r\n";
 
-var pointFragment = "\nprecision mediump float;\nuniform sampler2D u_sampler;\nvarying vec3 v_texCoord;\nvoid main() {\n    gl_FragColor = texture2D(u_sampler, vec2(v_texCoord[0] + gl_PointCoord[0] * v_texCoord[1], 1.0 + gl_PointCoord[1] * v_texCoord[2]));\n}";
+var lineVertex = "#ifdef GL_ES\r\nprecision highp float;\r\n#else\r\n#define lowp\r\n#define mediump\r\n#define highp\r\n#endif\r\n\r\nattribute vec4 a_pos;\r\nattribute mediump vec2 a_normal;\r\n// attribute mediump vec2 a_linenormal;\r\nattribute float a_linesofar;\r\n// (line_width * 100 + opacity * 10) * 10000 + tex_idx\r\nattribute float a_style;\r\n// attribute float a_seglen;\r\n\r\nuniform mat4 u_matrix;\r\nuniform float u_scale;\r\nuniform float u_styles[maxUniformLength];\r\n\r\nvarying vec2 v_linenormal;\r\nvarying float v_linewidth;\r\nvarying float v_opacity;\r\nvarying vec4 v_texcoord;\r\nvarying float v_scale;\r\nvarying float v_texture_normal;\r\n\r\nvarying float v_linesofar;\r\n// varying float v_ruler;\r\n\r\nvoid main() {\r\n    int tex_idx = int(mod(a_style, 10000.0));\r\n    float s = floor(a_style / 10000.0);\r\n    v_opacity = mod(s, 10.0) / 10.0;\r\n    if (v_opacity == 0.0) {\r\n        v_opacity = 1.0;\r\n    }\r\n    v_linewidth = s / 100.0;\r\n    v_texcoord = vec4(u_styles[tex_idx], u_styles[tex_idx + 1], u_styles[tex_idx + 2], u_styles[tex_idx + 3]);\r\n\r\n    v_scale = u_scale;\r\n\r\n    // v_linenormal = a_linenormal;\r\n\r\n    vec4 pos = a_pos;\r\n    pos.x += a_normal.x * v_linewidth * u_scale;\r\n    pos.y += a_normal.y * v_linewidth * u_scale;\r\n\r\n    // add linesofar with corner length caused by line-join\r\n    v_linesofar = a_linesofar;\r\n\r\n\r\n    gl_Position = u_matrix * pos;\r\n    if (a_normal.y == 0.0) {\r\n        // with an upside down straight line, a_normal.y is always 0, use a_normal.x instead\r\n        v_texture_normal = -sign(a_normal.x);\r\n    } else {\r\n        //\r\n        v_texture_normal = sign(a_normal.y);\r\n    }\r\n}\r\n";
 
-var pointVertex = '\n// marker\'s 2d point at max zoom\nattribute vec4 a_pos;\n\n// texture idx in u_sprite\nattribute float a_sprite_idx;\n\nuniform mat4 u_matrix;\n\n// scale of current zoom\nuniform float u_scale;\n\n// sprites, an array of sprites\n// a sprite has 6 integers:\n// 0 : northwest\'s x, 1 : width, 2: height, 3: sprite size, 4: offset x, 5: offset y\n// array\'s length is not dynamic, support maximum count / 6 sprites\nuniform float u_sprite[' + maxUniformLength + '];\n\nvarying vec3 v_texCoord;\n\nvoid main() {\n  int idx = int(a_sprite_idx) * 6;\n  float size = u_sprite[idx + 3];\n  vec2 textOffset = vec2(u_sprite[idx + 4], u_sprite[idx + 5]);\n\n  vec4 pos = vec4(a_pos.x + textOffset.x * u_scale, a_pos.y + textOffset.y * u_scale, a_pos.z, a_pos.w);\n\n  gl_Position = u_matrix * pos;\n\n  gl_PointSize = size;\n\n  // texture coord\n  v_texCoord = vec3(u_sprite[idx], u_sprite[idx + 1], u_sprite[idx + 2]);\n}';
+var pointFragment = "precision mediump float;\r\nuniform sampler2D u_sampler;\r\nvarying vec3 v_texCoord;\r\nvoid main() {\r\n    gl_FragColor = texture2D(u_sampler, vec2(v_texCoord[0] + gl_PointCoord[0] * v_texCoord[1], 1.0 + gl_PointCoord[1] * v_texCoord[2]));\r\n}\r\n";
 
-var polygonFragment = "\nprecision mediump float;\n\nvarying vec4 v_texcoord;\nvarying float v_opacity;\nvoid main() {\n    gl_FragColor = v_texcoord * v_opacity;\n}";
+var pointVertex = "// marker's 2d point at max zoom\r\nattribute vec4 a_pos;\r\n\r\n// texture idx in u_sprite\r\nattribute float a_sprite_idx;\r\n\r\nuniform mat4 u_matrix;\r\n\r\n// scale of current zoom\r\nuniform float u_scale;\r\n\r\n// sprites, an array of sprites\r\n// a sprite has 6 integers:\r\n// 0 : northwest's x, 1 : width, 2: height, 3: sprite size, 4: offset x, 5: offset y\r\n// array's length is not dynamic, support maximum count / 6 sprites\r\nuniform float u_sprite[maxUniformLength];\r\n\r\nvarying vec3 v_texCoord;\r\n\r\nvoid main() {\r\n  int idx = int(a_sprite_idx) * 6;\r\n  float size = u_sprite[idx + 3];\r\n  vec2 textOffset = vec2(u_sprite[idx + 4], u_sprite[idx + 5]);\r\n\r\n  vec4 pos = vec4(a_pos.x + textOffset.x * u_scale, a_pos.y + textOffset.y * u_scale, a_pos.z, a_pos.w);\r\n\r\n  gl_Position = u_matrix * pos;\r\n\r\n  gl_PointSize = size;\r\n\r\n  // texture coord\r\n  v_texCoord = vec3(u_sprite[idx], u_sprite[idx + 1], u_sprite[idx + 2]);\r\n}\r\n";
 
-var polygonVertex = 'attribute vec4 a_pos;\n//tex_idx * 100 + opacity * 10\nattribute float a_fill_style;\n\nuniform mat4 u_matrix;\nuniform float u_fill_styles[' + maxUniformLength + '];\n\nvarying float v_opacity;\nvarying vec4 v_texcoord;\n\nvoid main() {\n  int tex_idx = int(floor(a_fill_style / 100.0));\n  v_opacity = mod(a_fill_style, 100.0) / 10.0;\n  v_texcoord = vec4(u_fill_styles[tex_idx], u_fill_styles[tex_idx + 1], u_fill_styles[tex_idx + 2], u_fill_styles[tex_idx + 3]);\n\n  gl_Position = u_matrix * a_pos;\n}';
+var polygonFragment = "precision mediump float;\r\n\r\nvarying vec4 v_texcoord;\r\nvarying float v_opacity;\r\nvoid main() {\r\n    gl_FragColor = v_texcoord * v_opacity;\r\n}\r\n";
 
-var extrudeFragment = "\nprecision mediump float;\n\nvarying vec4 v_texcoord;\nvarying float v_opacity;\n// varying vec4 v_lighting;\n\nvoid main() {\n    gl_FragColor = v_texcoord * v_opacity;\n}";
+var polygonVertex = "attribute vec4 a_pos;\r\n//tex_idx * 100 + opacity * 10\r\nattribute float a_fill_style;\r\n\r\nuniform mat4 u_matrix;\r\nuniform float u_fill_styles[maxUniformLength];\r\n\r\nvarying float v_opacity;\r\nvarying vec4 v_texcoord;\r\n\r\nvoid main() {\r\n  int tex_idx = int(floor(a_fill_style / 100.0));\r\n  v_opacity = mod(a_fill_style, 100.0) / 10.0;\r\n  v_texcoord = vec4(u_fill_styles[tex_idx], u_fill_styles[tex_idx + 1], u_fill_styles[tex_idx + 2], u_fill_styles[tex_idx + 3]);\r\n\r\n  gl_Position = u_matrix * a_pos;\r\n}\r\n";
 
-var extrudeVertex = 'attribute vec4 a_pos;\nattribute vec4 a_normal;\n//tex_idx * 100 + opacity * 10\nattribute float a_fill_style;\n\nuniform vec3 u_lightcolor;\nuniform lowp vec3 u_lightpos;\nuniform lowp vec3 u_ambientlight;\nuniform lowp float u_lightintensity;\n// uniform vec3 u_ambientlight;\n\nuniform mat4 u_matrix;\nuniform float u_fill_styles[' + maxUniformLength + '];\n\nvarying float v_opacity;\nvarying vec4 v_texcoord;\n\nvarying vec4 v_lighting;\n\nvoid main() {\n  int tex_idx = int(a_fill_style / 100.0) * 4;\n  v_opacity = mod(a_fill_style, 100.0) / 10.0;\n\n  vec4 color = vec4(u_fill_styles[tex_idx], u_fill_styles[tex_idx + 1], u_fill_styles[tex_idx + 2], u_fill_styles[tex_idx + 3]);\n\n  gl_Position = u_matrix * a_pos;\n\n  vec3 normal = normalize(a_normal.xyz);\n  // // vec3 lightpos = normalize(u_lightpos);\n  // float nDotL = max(dot(u_lightpos, normal), 0.0);\n  // vec3 diffuse = u_lightcolor * color.rgb * nDotL;\n\n  // vec3 ambient = u_ambientlight * color.rgb;\n\n  // v_texcoord = vec4(diffuse + ambient, color.a);\n\n  // Relative luminance (how dark/bright is the surface color?)\n  float colorvalue = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;\n  // Add slight ambient lighting so no extrusions are totally black\n    vec4 ambientlight = vec4(u_ambientlight, 1.0);\n    color += ambientlight;\n\n    // Calculate cos(theta), where theta is the angle between surface normal and diffuse light ray\n    float directional = clamp(dot(normal, u_lightpos), 0.0, 1.0);\n\n    // Adjust directional so that\n    // the range of values for highlight/shading is narrower\n    // with lower light intensity\n    // and with lighter/brighter surface colors\n    directional = mix((1.0 - u_lightintensity), max((1.0 - colorvalue + u_lightintensity), 1.0), directional);\n\n    // Add gradient along z axis of side surfaces\n    // if (normal.y != 0.0) {\n    //     directional *= clamp((t + base) * pow(height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);\n    // }\n\n    // Assign final color based on surface + ambient light color, diffuse light directional, and light color\n    // with lower bounds adjusted to hue of light\n    // so that shading is tinted with the complementary (opposite) color to the light color\n    v_texcoord.r += clamp(color.r * directional * u_lightcolor.r, mix(0.0, 0.3, 1.0 - u_lightcolor.r), 1.0);\n    v_texcoord.g += clamp(color.g * directional * u_lightcolor.g, mix(0.0, 0.3, 1.0 - u_lightcolor.g), 1.0);\n    v_texcoord.b += clamp(color.b * directional * u_lightcolor.b, mix(0.0, 0.3, 1.0 - u_lightcolor.b), 1.0);\n    v_texcoord.a = color.a;\n  // vec3 normal = normalize(a_normal.xyz);\n  // vec3 lightpos = normalize(u_lightpos.xyz);\n  // // codes from mapbox-gl-js\n  // v_lighting = vec4(0.0, 0.0, 0.0, 1.0);\n  // float directional = clamp(dot(normal, lightpos), 0.0, 1.0);\n  // directional = mix((1.0 - u_lightintensity), max((0.5 + u_lightintensity), 1.0), directional);\n\n  // // if (a_normal.y != 0.0) {\n  // //   directional *= clamp((t + base) * pow(height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);\n  // // }\n\n  // v_lighting.rgb += clamp(directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0));\n}';
+var extrudeFragment = "precision mediump float;\r\n\r\nvarying vec4 v_texcoord;\r\nvarying float v_opacity;\r\n// varying vec4 v_lighting;\r\n\r\nvoid main() {\r\n    gl_FragColor = v_texcoord * v_opacity;\r\n}\r\n";
+
+var extrudeVertex = "attribute vec4 a_pos;\r\nattribute vec4 a_normal;\r\n//tex_idx * 100 + opacity * 10\r\nattribute float a_fill_style;\r\n\r\nuniform vec3 u_lightcolor;\r\nuniform lowp vec3 u_lightpos;\r\nuniform lowp vec3 u_ambientlight;\r\nuniform lowp float u_lightintensity;\r\n// uniform vec3 u_ambientlight;\r\n\r\nuniform mat4 u_matrix;\r\nuniform float u_fill_styles[maxUniformLength];\r\n\r\nvarying float v_opacity;\r\nvarying vec4 v_texcoord;\r\n\r\nvarying vec4 v_lighting;\r\n\r\nvoid main() {\r\n  int tex_idx = int(a_fill_style / 100.0) * 4;\r\n  v_opacity = mod(a_fill_style, 100.0) / 10.0;\r\n\r\n  vec4 color = vec4(u_fill_styles[tex_idx], u_fill_styles[tex_idx + 1], u_fill_styles[tex_idx + 2], u_fill_styles[tex_idx + 3]);\r\n\r\n  gl_Position = u_matrix * a_pos;\r\n\r\n  vec3 normal = normalize(a_normal.xyz);\r\n  // // vec3 lightpos = normalize(u_lightpos);\r\n  // float nDotL = max(dot(u_lightpos, normal), 0.0);\r\n  // vec3 diffuse = u_lightcolor * color.rgb * nDotL;\r\n\r\n  // vec3 ambient = u_ambientlight * color.rgb;\r\n\r\n  // v_texcoord = vec4(diffuse + ambient, color.a);\r\n\r\n  // Relative luminance (how dark/bright is the surface color?)\r\n  float colorvalue = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;\r\n  // Add slight ambient lighting so no extrusions are totally black\r\n    vec4 ambientlight = vec4(u_ambientlight, 1.0);\r\n    color += ambientlight;\r\n\r\n    // Calculate cos(theta), where theta is the angle between surface normal and diffuse light ray\r\n    float directional = clamp(dot(normal, u_lightpos), 0.0, 1.0);\r\n\r\n    // Adjust directional so that\r\n    // the range of values for highlight/shading is narrower\r\n    // with lower light intensity\r\n    // and with lighter/brighter surface colors\r\n    directional = mix((1.0 - u_lightintensity), max((1.0 - colorvalue + u_lightintensity), 1.0), directional);\r\n\r\n    // Add gradient along z axis of side surfaces\r\n    // if (normal.y != 0.0) {\r\n    //     directional *= clamp((t + base) * pow(height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);\r\n    // }\r\n\r\n    // Assign final color based on surface + ambient light color, diffuse light directional, and light color\r\n    // with lower bounds adjusted to hue of light\r\n    // so that shading is tinted with the complementary (opposite) color to the light color\r\n    v_texcoord.r += clamp(color.r * directional * u_lightcolor.r, mix(0.0, 0.3, 1.0 - u_lightcolor.r), 1.0);\r\n    v_texcoord.g += clamp(color.g * directional * u_lightcolor.g, mix(0.0, 0.3, 1.0 - u_lightcolor.g), 1.0);\r\n    v_texcoord.b += clamp(color.b * directional * u_lightcolor.b, mix(0.0, 0.3, 1.0 - u_lightcolor.b), 1.0);\r\n    v_texcoord.a = color.a;\r\n  // vec3 normal = normalize(a_normal.xyz);\r\n  // vec3 lightpos = normalize(u_lightpos.xyz);\r\n  // // codes from mapbox-gl-js\r\n  // v_lighting = vec4(0.0, 0.0, 0.0, 1.0);\r\n  // float directional = clamp(dot(normal, lightpos), 0.0, 1.0);\r\n  // directional = mix((1.0 - u_lightintensity), max((0.5 + u_lightintensity), 1.0), directional);\r\n\r\n  // // if (a_normal.y != 0.0) {\r\n  // //   directional *= clamp((t + base) * pow(height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);\r\n  // // }\r\n\r\n  // v_lighting.rgb += clamp(directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0));\r\n}\r\n";
 
 var shaders = {
-    'line': {
-        'fragmentSource': lineFragment,
-        'vertexSource': lineVertex
+    line: {
+        fragmentSource: lineFragment,
+        vertexSource: lineVertex
     },
-    'point': {
-        'fragmentSource': pointFragment,
-        'vertexSource': pointVertex
+    point: {
+        fragmentSource: pointFragment,
+        vertexSource: pointVertex
     },
-    'polygon': {
-        'fragmentSource': polygonFragment,
-        'vertexSource': polygonVertex
+    polygon: {
+        fragmentSource: polygonFragment,
+        vertexSource: polygonVertex
     },
-    'extrude': {
-        'fragmentSource': extrudeFragment,
-        'vertexSource': extrudeVertex
+    extrude: {
+        fragmentSource: extrudeFragment,
+        vertexSource: extrudeVertex
     }
 };
 
+var re = /maxUniformLength/g;
+
+for (var name in shaders) {
+    var program = shaders[name];
+    program.fragmentSource = program.fragmentSource.replace(re, maxUniformLength);
+    program.vertexSource = program.vertexSource.replace(re, maxUniformLength);
+}
 
 
-var index = Object.freeze({
+
+var webgl = Object.freeze({
 	WebglRenderer: WebglRenderer,
 	Shader: shaders,
 	Painter: Painter,
@@ -4518,8 +4528,8 @@ function hexDouble(num) {
 }
 
 var reverseNames = {};
-for (var name in colorName) {
-   reverseNames[colorName[name]] = name;
+for (var name$1 in colorName) {
+   reverseNames[colorName[name$1]] = name$1;
 }
 
 var Color = function Color(obj) {
@@ -5756,6 +5766,6 @@ var ExtrudeRenderer = function (_PathRenderer) {
 
 ExtrudePolygonLayer.registerRenderer('webgl', ExtrudeRenderer);
 
-export { index as webgl, BigDataLayer, BigPointLayer, BigLineLayer, BigPolygonLayer, ExtrudePolygonLayer };
+export { webgl, BigDataLayer, BigPointLayer, BigLineLayer, BigPolygonLayer, ExtrudePolygonLayer };
 
 typeof console !== 'undefined' && console.log('maptalks.biglayer v0.3.3, requires maptalks@>=0.37.0.');
