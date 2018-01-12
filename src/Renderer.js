@@ -375,7 +375,9 @@ export default class WebglRenderer extends maptalks.renderer.CanvasRenderer {
             // doesn't need to flip Y with headless-gl, unknown reason
             mat4.scale(m, m, [1, -1, 1]);
         }
+        // m1: projection matrix
         mat4.copy(m1, m);
+        // m2: view matrix
         const m2 = this._getLookAtMat();
         mat4.multiply(m, m1, m2);
         return m;

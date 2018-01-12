@@ -1,5 +1,7 @@
-export { default as WebglRenderer } from './Renderer';
+// export renderer and painters with package 'webgl'.
+import * as webgl from './webgl';
 
-export * from './painter';
+export { webgl };
 
-export { default as Shader } from './shader/Shader';
+// export layers as maptalks.Big*Layer
+export * from './layer';

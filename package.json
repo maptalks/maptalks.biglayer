@@ -8,8 +8,8 @@
     "url": "https://github.com/maptalks/maptalks.biglayer.git"
   },
   "main": "dist/maptalks.biglayer.js",
-  "module": "src/maptalks.biglayer.es.js",
-  "jsnext:main": "src/maptalks.biglayer.es.js",
+  "module": "dist/maptalks.biglayer.es.js",
+  "jsnext:main": "dist/maptalks.biglayer.es.js",
   "scripts": {
     "preversion": "npm run lint",
     "version": "gulp minify && git add -A dist",
