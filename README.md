@@ -1,6 +1,6 @@
 maptalks.biglayer
 ----
-A experimental layer to draw millions of data with native webgl.
+An experimental layer to draw millions of data with native webgl.
 
 ## Examples
 
