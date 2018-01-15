@@ -1,5 +1,5 @@
 /*!
- * maptalks.biglayer v0.3.3
+ * maptalks.biglayer v0.4.0
  * LICENSE : MIT
  * (c) 2016-2018 maptalks.org
  */
@@ -5768,4 +5768,4 @@ ExtrudePolygonLayer.registerRenderer('webgl', ExtrudeRenderer);
 
 export { webgl, BigDataLayer, BigPointLayer, BigLineLayer, BigPolygonLayer, ExtrudePolygonLayer };
 
-typeof console !== 'undefined' && console.log('maptalks.biglayer v0.3.3, requires maptalks@>=0.37.0.');
+typeof console !== 'undefined' && console.log('maptalks.biglayer v0.4.0, requires maptalks@>=0.37.0.');
