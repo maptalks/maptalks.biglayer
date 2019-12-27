@@ -1,6 +1,10 @@
-maptalks.biglayer
+maptalks.biglayer [Deprecated]
 ----
 An experimental layer to draw millions of data with native webgl.
+
+## Warning
+
+This layer is an experiment, is out of maintainance now. It only works for maptalks < 0.46.0 ([reason](https://github.com/maptalks/maptalks.js/releases/tag/v0.46.0))
 
 ## Examples
 
